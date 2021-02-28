@@ -201,6 +201,8 @@ View.drawStaticProps = function(x, y) {
         placeTile(TILESET.ROCK);
     } else if (char == 'M') {
         placeTile(TILESET.START);
+    } else if (char == 'R') {
+        placeTile(TILESET.RESETPOS);
     }
 }
 
@@ -217,8 +219,6 @@ View.draw = function() {
         for (let x = box.xmin; x <= box.xmax; ++x) {
             this.drawTileBackground(x, y);
         }
-    }
-    for (let y = box.ymin; y <= box.ymax; ++y) {
         for (let x = box.xmin; x <= box.xmax; ++x) {
             this.drawStaticProps(x, y);
             GameState.drawDynamicProps(x, y);
@@ -248,6 +248,7 @@ TERRAIN_CHARS = {
     boulder: 'B',
     postbox: 'P',
     secret: 'S',
+    reset: 'R',
     start: 'M',
 }
 
@@ -315,7 +316,6 @@ GameState = {
     lastDir: null,
     cells: null,
     onIsland: false, // for camera cnetering
-    lastGrassCell: null, // resetting to this cell
 }
 GameState.setStartPos = function(x, y) {
     this.startCell = this.cells[y][x]
@@ -371,7 +371,7 @@ GameState.getIsland = function(root) {
     return island.size ? island : null;
 }
 
-const STUMP_VISUAL_HEIGHT = 0.2;
+const STUMP_VISUAL_HEIGHT = 0.1;
 class Log {
     constructor(cell) {
         this.axis = 0; // upright
@@ -476,8 +476,19 @@ class CellState {
 }
 
 GameState.setTerrain = function(x, y, char) {
+    let cell = this.cells[y][x]
+    if (char == 'R') {
+        /* reset position, only one can exist per island */
+        this.setTerrain(x, y, '·'); // make grass
+        let island = this.getIsland(cell);
+        for (let cell2 of island) {
+            if (cell2.terrain == 'R') {
+                this.setTerrain(cell2.x, cell2.y, '·')
+            }
+        }
+    }
     // todo: clear tile
-    this.cells[y][x].terrain = char
+    cell.terrain = char
 }
 GameState.getTerrain = function(x, y) {
     if (x >= 0 && y >= 0 && y < GameState.dimY && x < GameState.dimX) {
@@ -500,27 +511,147 @@ GameState.canMove = function(cell, dir) {
         // cannot jump on water
         return false;
     }
-    if (targetCell.getElevation() - 1 > cell.getElevation()) {
+    let dh = targetCell.getElevation() - cell.getElevation();
+    if (dh > 1) {
         // cannot jump more than one step up
+        return false;
+    }
+    if (cell.topLog() && cell.topLog().axis == -dir.axis && dh >= -1) {
+        // cannot jump off of orthogonal log, except when jumping down at least two steps
         return false;
     }
     return true;
 }
 GameState.tryNudge = function(cell, dir) {
-    return false;
+    // monster stands in cell
+    let logCell = cell.nextCell(dir)
+    let log = logCell.topLog()
+    if (!log || log.axis != dir.axis) {
+        return
+    }
+    let targetCell = logCell.nextCell(dir);
+
+    function confirmNudge() {
+        log.moveTo(dir);
+        log.axis = 0; // standing now
+        if (log.getElevation() == -2) {
+            log.axis = dir.axis; //... unless in the water
+        }
+    }
+
+
+    // I cannot nudge if I cannot move out of my cell
+    if (cell.topLog() && cell.topLog().axis == -dir.axis) {
+        return false;
+    }
+    let targetLog = targetCell.topLog();
+    let targetElev = targetCell.getElevation();
+    let logElev = log.getElevation();
+    if (!targetLog) {
+        // just nudge on top of an otherwise empty field
+        if (targetElev <= logElev + 1) {
+            confirmNudge()
+        }
+        return
+    } else {
+        TMPLOG("targetLogFound")
+            // nudge onto a field containing another log
+        let targetLogElev = targetLog.getElevation();
+        if (targetLogElev >= 2 + logElev) {
+            // the other log lies on higher level → nothing happens
+            return;
+        }
+        // bump that log
+        GameState.bumpLog(targetLog, dir);
+        if (targetLog.cell != targetCell) {
+            // it has moved out of the cell, I can move now.
+            confirmNudge();
+            return
+        } else {
+            // it is still there
+            if (targetElev <= logElev + 1) {
+                // the top of the other log is high enough to lift my log on top
+                log.moveTo(dir);
+                log.axis = 0;
+            }
+            return
+        }
+    }
 }
-GameState.tryPush = function(cell, dir) {
-    log = cell.topLog()
-    nextCell = cell.nextCell(dir)
-    if (!log) return false;
+GameState.rollLog = function(log, dir) {
+    let cell = log.cell
+    let nextCell = cell.nextCell(dir)
+    let logElev = log.getElevation()
+    let targetElev = nextCell.getElevation()
+    let nextLog = nextCell.topLog();
+
+    let confirmRoll = function() {
+        log.moveTo(dir)
+        GameState.rollLog(log, dir);
+    }
+
+    if (logElev < 0) {
+        // logs in the water do not roll
+        return
+    }
+    if (!nextLog) {
+        if (logElev >= targetElev) {
+            /* make the move and keep rolling*/
+            confirmRoll();
+        }
+        return
+    }
+    let otherLogElev = nextLog.getElevation()
+    if (otherLogElev > logElev) {
+        // cannot bump log above me
+        return
+    }
+    // log is at same level or below
+    if (nextLog.axis == -log.axis) {
+        // can roll on this log if below
+        if (logElev >= targetElev) {
+            confirmRoll();
+        }
+        return
+    } else if (nextLog.axis == log.axis) {
+        if (otherLogElev >= logElev - 1) {
+            // I hit that log from the side
+            GameState.bumpLog(nextLog, dir)
+        } else {
+            console.log("Unimplemented Interaction: Log Falling on parallel other log.")
+        }
+    } else if (nextLog.axis == 0) {
+        // rolls over when higher
+        if (logElev >= targetElev) {
+            confirmRoll();
+            return
+        } else {
+            // bumps otherwise
+            GameState.bumpLog(nextLog, dir)
+            return
+        }
+    }
+}
+GameState.bumpLog = function(log, dir) {
     if (log.axis == 0) {
         if (nextCell.getElevation() <= log.getElevation()) {
             log.axis = dir.axis;
             log.moveTo(dir);
             return true;
         }
+    } else if (log.axis == dir.axis) {
+        // resets bump (can only be nudged)
+        return false;
+    } else {
+        GameState.rollLog(log, dir);
     }
     return false;
+}
+GameState.tryPush = function(cell, dir) {
+    log = cell.topLog()
+    nextCell = cell.nextCell(dir)
+    if (!log) return false;
+    this.bumpLog(log, dir)
 }
 GameState.tryChop = function(cell, dir) {
     if (cell.terrain == "1" && !cell.chopped) {
@@ -544,7 +675,7 @@ GameState.input = function(dir) {
         this.playerCell = this.playerCell.nextCell(dir)
     } else if (cell1.isRaft()) {
 
-    } else if (this.tryNudge(cell2, dir)) {
+    } else if (this.tryNudge(cell1, dir)) {
 
     } else if (this.tryPush(cell2, dir)) {
 
@@ -557,9 +688,6 @@ GameState.input = function(dir) {
         View.showIsland(island);
     }
     this.onIsland = island != null;
-    if (this.playerCell.terrain == '·') {
-        this.lastGrassCell = this.playerCell
-    }
     View.draw();
 }
 GameState.recallLog = function(origin) {
@@ -582,12 +710,17 @@ GameState.resetIsland = function() {
         console.log("Refusing reset because player is not on an island.")
         return;
     }
-    if (this.playerCell.terrain != '·') {
-        if (!this.lastGrassCell) {
-            console.log("Refusing reset because I don't know where to move monster.")
-            return;
+    let resetCell = null
+    for (cell of island) {
+        if (cell.terrain == 'R') {
+            resetCell = cell
         }
-        this.playerCell = this.lastGrassCell
+    }
+    if (resetCell) {
+        this.playerCell = resetCell
+    } else if (this.playerCell.terrain == '1' || this.playerCell.terrain == '2') {
+        console.log("Refusing reset because no reset pos found and player is on stump.")
+        return
     }
     console.log("Resetting Island.")
     for (cell of island) {
