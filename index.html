@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>A Monster's Editor</title>
+    <meta charset="utf-8" />
+    <style type="text/css">
+        canvas {
+            border: 1px solid black;
+            width: 100%;
+            height: 60vh;
+            padding: 0pt;
+        }
+        
+        body {
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            text-align: center;
+        }
+        
+        #content {
+            display: block;
+            justify-content: center;
+            width: 95%;
+        }
+        
+        h3 {
+            font-size: 40px;
+        }
+        
+        #editor-buttons,
+        #menu-bottons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        input {
+            border-radius: 15px;
+            border: 5px solid #888888;
+            background-color: #cccccc;
+            background-size: contain;
+            cursor: pointer;
+            width: 100pt;
+            height: 100pt;
+        }
+        
+        input.terrain.selected {
+            box-sizing: border-box;
+            background-color: #ffcccc;
+            border: 5px solid red;
+            border-radius: 3mm;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="textures" style="display:none">
+        <img id="background-tiles" src="img/background-tiles.png">
+        <img id="props" src="img/props.png">
+    </div>
+    <h3>A Monster's Editor</h3>
+    <div id="content">
+        <div id="menu-buttons"></div>
+        <canvas id="canvas"></canvas>
+        <div id="editor-buttons"></div>
+    </div>
+    <script src="jquery-3.5.1.min.js"></script>
+    <script src="editor.js"></script>
+</body>
+
+</html>
