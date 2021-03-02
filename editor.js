@@ -319,9 +319,8 @@ GameState = {
 }
 GameState.setStartPos = function(x, y) {
     this.startCell = this.cells[y][x]
-    if (this.playerX == null) {
-        this.playerX = x;
-        this.playerY = y;
+    if (this.playerCell == null) {
+        this.playerCell = this.startCell
     }
 }
 GameState.drawDynamicProps = function(x, y) {
@@ -408,6 +407,17 @@ class Log {
             View.drawProp(this.cell.x, this.cell.y - this.getElevation() * STUMP_VISUAL_HEIGHT, tile)
         }
     }
+    toSave() {
+        let save = {}
+        save.x = this.cell.x
+        save.y = this.cell.y
+        let z = this.cell.logs.indexOf(this)
+        if (z) save.z = z; // no need if no stack
+        save.ox = this.origin.x
+        save.oy = this.origin.y
+        save.axis = this.axis
+        return save
+    }
 }
 
 class CellState {
@@ -473,6 +483,11 @@ class CellState {
         }
         return null;
     }
+    saveLogsTo(logs) {
+        for (log of this.logs) {
+            logs.push(log.toSave())
+        }
+    }
 }
 
 GameState.setTerrain = function(x, y, char) {
@@ -522,10 +537,12 @@ GameState.canMove = function(cell, dir) {
     }
     return true;
 }
+
 GameState.tryNudge = function(cell, dir) {
     // monster stands in cell
     let logCell = cell.nextCell(dir)
     let log = logCell.topLog()
+        // nudging means: trying to push a lying in parallel to my movement
     if (!log || log.axis != dir.axis) {
         return
     }
@@ -538,7 +555,6 @@ GameState.tryNudge = function(cell, dir) {
             log.axis = dir.axis; //... unless in the water
         }
     }
-
 
     // I cannot nudge if I cannot move out of my cell
     if (cell.topLog() && cell.topLog().axis == -dir.axis) {
@@ -634,13 +650,14 @@ GameState.rollLog = function(log, dir) {
 }
 GameState.bumpLog = function(log, dir) {
     if (log.axis == 0) {
-        if (nextCell.getElevation() <= log.getElevation()) {
+        // may bump it upwards by 1 stump
+        if (nextCell.getElevation() <= log.getElevation() + 1) {
             log.axis = dir.axis;
             log.moveTo(dir);
             return true;
         }
     } else if (log.axis == dir.axis) {
-        // resets bump (can only be nudged)
+        // cannot be bumped (can only be nudged)
         return false;
     } else {
         GameState.rollLog(log, dir);
@@ -662,9 +679,6 @@ GameState.tryChop = function(cell, dir) {
     return false;
 }
 
-GameState.playerCell = function() {
-    this.cells[this.playerY][this.playerX]
-}
 GameState.input = function(dir) {
     console.log("Going " + dir.name);
     this.lastDir = dir; // direction monster is facing
@@ -731,16 +745,38 @@ GameState.resetIsland = function() {
     View.draw()
 }
 
+GameState.readlogFromSave = function(save) {
+    let cell = this.cells[save.y][save.x]
+    let origin = this.cells[save.oy][save.ox]
+    let z = save.z || 0;
+    let log = new Log(cell)
+    log.origin = origin
+    log.axis = save.axis
+    cell.logs.length = Math.max(cell.logs.length, z + 1)
+    cell.logs[z] = log;
+    origin.chopped = true;
+}
+
 GameState.saveTo = function(saveGame) {
     saveGame.dimX = this.dimX;
     saveGame.dimY = this.dimY;
-    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
     saveGame.startX = this.startCell.x;
     saveGame.startY = this.startCell.y;
     if (this.playerCell != this.startCell) {
-        saveGame.x = this.playerX;
-        saveGame.y = this.playerY;
+        saveGame.x = this.playerCell.x;
+        saveGame.y = this.playerCell.y;
     }
+    let logs = []
+    for (let y = 0; y < this.dimY; ++y) {
+        for (let x = 0; x < this.dimX; ++x) {
+            this.cells[y][x].saveLogsTo(logs)
+        }
+    }
+    if (logs.length) {
+        saveGame.logs = logs
+    }
+    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
+    console.log(saveGame)
 }
 GameState.loadFrom = function(saveGame) {
     this.dimX = saveGame.dimX;
@@ -757,8 +793,13 @@ GameState.loadFrom = function(saveGame) {
     } else {
         this.playerCell = this.startCell
     }
-    let focusCell = this.playerCell || this.startCell || this.cells[(this.dimY - 1) / 2][(this.dimX - 1) / 2]
+    if (saveGame.logs) {
+        for (log of saveGame.logs) {
+            this.readlogFromSave(log);
+        }
+    }
 
+    let focusCell = this.playerCell || this.startCell || this.cells[(this.dimY - 1) / 2][(this.dimX - 1) / 2]
     let island = GameState.getIsland(focusCell)
     if (island) {
         View.showIsland(island)
