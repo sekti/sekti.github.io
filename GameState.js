@@ -1,10 +1,12 @@
 const HORIZONTAL = -1;
 const VERTICAL = 1;
-const LEFT = { dx: -1, dy: 0, axis: HORIZONTAL, name: "left" }
-const RIGHT = { dx: 1, dy: 0, axis: HORIZONTAL, name: "right" }
-const UP = { dx: 0, dy: -1, axis: VERTICAL, name: "up" }
-const DOWN = { dx: 0, dy: 1, axis: VERTICAL, name: "down" }
+let LEFT = { dx: -1, dy: 0, axis: HORIZONTAL, name: "left" }
+let RIGHT = { dx: 1, dy: 0, axis: HORIZONTAL, name: "right" }
+let UP = { dx: 0, dy: -1, axis: VERTICAL, name: "up" }
+let DOWN = { dx: 0, dy: 1, axis: VERTICAL, name: "down" }
 const DIRS = [LEFT, RIGHT, UP, DOWN]
+
+function reverse(dir) { return DIRS[DIRS.indexOf(dir) ^ 1] }
 
 GameState = {
     dimX: null,
@@ -14,7 +16,9 @@ GameState = {
     lastDir: null,
     cells: null,
     onIsland: false, // for camera cnetering
+    undoStack: [],
 }
+
 GameState.setStartPos = function(x, y) {
     this.startCell = this.cells[y][x]
     if (this.playerCell == null) {
@@ -35,7 +39,7 @@ GameState.drawDynamicProps = function(x, y) {
     cell.logs.forEach(log => {
         log.draw();
     });
-    if (cell == this.playerCell) {
+    if (cell == this.playerCell && !this.fastTraveling) {
         let tile = TILESET.MONSTER_RIGHT;
         switch (this.lastDir) {
             case LEFT:
@@ -54,6 +58,7 @@ GameState.drawDynamicProps = function(x, y) {
         View.drawProp(x, y - cell.getElevation() * STUMP_VISUAL_HEIGHT, tile);
     }
 }
+
 GameState.getIsland = function(root) {
     // flood fill
     let unvisited = [root]
@@ -66,125 +71,6 @@ GameState.getIsland = function(root) {
         DIRS.forEach(dir => unvisited.push(cell.nextCell(dir)));
     }
     return island.size ? island : null;
-}
-
-class Log {
-    constructor(cell) {
-        this.axis = 0; // upright
-        this.isRaft = false;
-        this.sibling = null;
-        this.cell = cell;
-        this.origin = cell;
-    }
-    moveTo(dir) {
-        this.cell.removeLog(this)
-        this.cell = this.cell.nextCell(dir);
-        this.cell.addLog(this);
-    }
-    getElevation() {
-        return this.cell.getElevation(this);
-    }
-    height() {
-        return this.axis ? 2 : 4; // standing logs are 4 stumps high.
-    }
-    draw() {
-        if (!this.sibling && !this.isRaft) {
-            let tile;
-            switch (this.axis) {
-                case 0:
-                    tile = TILESET.LOG_STANDING;
-                    break;
-                case HORIZONTAL:
-                    tile = TILESET.LOG_HORIZONTAL;
-                    break;
-                case VERTICAL:
-                    tile = TILESET.LOG_VERTICAL;
-                    break;
-            }
-            View.drawProp(this.cell.x, this.cell.y - this.getElevation() * STUMP_VISUAL_HEIGHT, tile)
-        }
-    }
-    toSave() {
-        let save = {}
-        save.x = this.cell.x
-        save.y = this.cell.y
-        let z = this.cell.logs.indexOf(this)
-        if (z) save.z = z; // no need if no stack
-        save.ox = this.origin.x
-        save.oy = this.origin.y
-        save.axis = this.axis
-        return save
-    }
-}
-
-class CellState {
-    constructor(x, y, terrain) {
-        this.chopped = false;
-        this.x = x;
-        this.y = y;
-        this.logs = []
-        this.terrain = terrain;
-    }
-    isRaft() {
-        return false;
-    }
-    baseElevation() {
-        switch (this.terrain) {
-            case 'P':
-            case 'B':
-                return 4;
-            case 'b':
-                return 2;
-            case ' ':
-                return -2;
-            case '·':
-                return 0;
-            case '1':
-                return this.chopped ? 1 : 5;
-            case '2':
-                return this.chopped ? 1 : 8;
-            default:
-                console.assert(false, "Invalid terrain.");
-                return 0;
-        }
-    }
-    addLog(log) {
-        this.logs.push(log);
-    }
-    removeLog(log) {
-        let i = this.logs.indexOf(log);
-        console.assert(i >= 0, "Tried to remove non-existent log from cell.");
-        this.logs.splice(i, 1);
-    }
-    topLog() {
-        let length = this.logs.length;
-        return length ? this.logs[length - 1] : null;
-    }
-    getElevation(queryLog) {
-        // total elevation (for queryLog == null) or elevation of given log
-        let elev = this.baseElevation();
-        for (const log of this.logs) {
-            if (log == queryLog) {
-                return elev
-            }
-            elev += log.height();
-        }
-        console.assert(queryLog == null, "elevation of log requested that does not exist.");
-        return elev;
-    }
-    nextCell(dir) {
-        let y = this.y + dir.dy;
-        let x = this.x + dir.dx;
-        if (y >= 0 && x >= 0 && y < GameState.dimY && x < GameState.dimX) {
-            return GameState.cells[y][x];
-        }
-        return null;
-    }
-    saveLogsTo(logs) {
-        for (log of this.logs) {
-            logs.push(log.toSave())
-        }
-    }
 }
 
 GameState.setTerrain = function(x, y, char) {
@@ -201,6 +87,7 @@ GameState.setTerrain = function(x, y, char) {
     }
     // todo: clear tile
     cell.terrain = char
+    this.undoStack = [] // bad things could happen
 }
 GameState.getTerrain = function(x, y) {
     if (x >= 0 && y >= 0 && y < GameState.dimY && x < GameState.dimX) {
@@ -225,7 +112,25 @@ GameState.recallLog = function(origin) {
     }
     origin.chopped = false;
 }
-
+const FAST_TRAVEL = 1;
+const CHEAT_TRAVEL = 2;
+GameState.startFastTravel = function(cheat) {
+    GameState.fastTraveling = cheat ? CHEAT_TRAVEL : FAST_TRAVEL;
+    GameState.onIsland = false;
+}
+GameState.endFastTravel = function(x, y) {
+    let cell = this.cells[y] ? this.cells[y][x] : undefined;
+    TMPLOG(cell)
+    if (cell) {
+        if (this.fastTraveling == FAST_TRAVEL && cell.terrain != 'P') {
+            console.log("Cannot fast-travel to cell of type ", cell.terrain)
+            return;
+        }
+        this.snapshot() // for undo
+        this.playerCell = cell;
+        this.fastTraveling = false;
+    }
+}
 GameState.resetIsland = function() {
     let island = this.getIsland(this.playerCell)
     if (!island) {
@@ -250,30 +155,19 @@ GameState.resetIsland = function() {
             this.recallLog(cell)
         }
     }
-    View.draw()
 }
 
-GameState.readlogFromSave = function(save) {
-    let cell = this.cells[save.y][save.x]
-    let origin = this.cells[save.oy][save.ox]
-    let z = save.z || 0;
-    let log = new Log(cell)
-    log.origin = origin
-    log.axis = save.axis
-    cell.logs.length = Math.max(cell.logs.length, z + 1)
-    cell.logs[z] = log;
-    origin.chopped = true;
-}
-
-GameState.saveTo = function(saveGame) {
+GameState.saveMapTo = function(saveGame) {
+    // static part of the save
     saveGame.dimX = this.dimX;
     saveGame.dimY = this.dimY;
     saveGame.startX = this.startCell.x;
     saveGame.startY = this.startCell.y;
-    if (this.playerCell != this.startCell) {
-        saveGame.x = this.playerCell.x;
-        saveGame.y = this.playerCell.y;
-    }
+    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
+
+}
+GameState.saveDynamicStateTo = function(saveGame) {
+    // dynamic part of the saves
     let logs = []
     for (let y = 0; y < this.dimY; ++y) {
         for (let x = 0; x < this.dimX; ++x) {
@@ -283,10 +177,20 @@ GameState.saveTo = function(saveGame) {
     if (logs.length) {
         saveGame.logs = logs
     }
-    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
+    if (this.playerCell != this.startCell) {
+        saveGame.x = this.playerCell.x;
+        saveGame.y = this.playerCell.y;
+        if (this.lastDir) {
+            saveGame.dir = DIRS.indexOf(this.lastDir);
+        }
+    }
+}
+GameState.saveTo = function(saveGame) {
+    this.saveMapTo(saveGame)
+    this.saveDynamicStateTo(saveGame)
     console.log(saveGame)
 }
-GameState.loadFrom = function(saveGame) {
+GameState.loadMapFrom = function(saveGame) {
     this.dimX = saveGame.dimX;
     this.dimY = saveGame.dimY;
     this.cells = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => new CellState(x, y, saveGame.map[y][x])));
@@ -296,25 +200,63 @@ GameState.loadFrom = function(saveGame) {
     } else {
         this.startCell = null
     }
+}
+GameState.loadDynamicStateFrom = function(saveGame) {
     if (saveGame.x && saveGame.y) {
         this.playerCell = this.cells[saveGame.y][saveGame.x]
     } else {
         this.playerCell = this.startCell
+    }
+    // clear dynamic state first
+    for (let y = 0; y < this.dimY; ++y) {
+        for (let x = 0; x < this.dimX; ++x) {
+            let cell = this.cells[y][x]
+            cell.logs = []
+            cell.chopped = false
+        }
     }
     if (saveGame.logs) {
         for (log of saveGame.logs) {
             this.readlogFromSave(log);
         }
     }
-
-    let focusCell = this.playerCell || this.startCell || this.cells[(this.dimY - 1) / 2][(this.dimX - 1) / 2]
-    let island = GameState.getIsland(focusCell)
-    if (island) {
-        View.showIsland(island)
+    if (this.playerCell) {
+        this.focusPlayer()
+        if (saveGame.dir) {
+            this.lastDir = DIRS[saveGame.dir]
+        }
     } else {
-        View.cx = this.playerCell.x || this.startCell.x || ((this.dimX - 1) / 2);
-        View.cy = this.playerCell.y || this.startCell.y || ((this.dimY - 1) / 2);
+        let focusCell = this.startCell || this.cells[(this.dimY - 1) / 2][(this.dimX - 1) / 2]
+        let island = GameState.getIsland(focusCell)
+        if (island) {
+            View.showIsland(island)
+        } else {
+            View.cx = focusCell.x
+            View.cy = focusCell.y
+        }
     }
+}
+GameState.loadFrom = function(saveGame) {
+    if (saveGame.map) {
+        // undo states do not have this
+        this.loadMapFrom(saveGame)
+    }
+    this.loadDynamicStateFrom(saveGame)
+}
+
+GameState.snapshot = function() {
+    let snapshot = {}
+    this.saveDynamicStateTo(snapshot);
+    this.undoStack.push(snapshot)
+}
+GameState.undo = function() {
+    if (!this.undoStack.length) {
+        console.log("Undo stack is empty.")
+        return
+    }
+    let snapshot = this.undoStack.pop()
+    this.loadDynamicStateFrom(snapshot)
+    View.draw()
 }
 
 function saveToClipboardData(event) {

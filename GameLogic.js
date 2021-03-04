@@ -1,5 +1,5 @@
 GameState.canMove = function(cell, dir) {
-    targetCell = cell.nextCell(dir);
+    let targetCell = cell.nextCell(dir);
     let targetLog = targetCell.topLog()
     if (targetLog && targetLog.axis && targetLog.axis != dir.axis) {
         // cannot jump on orthogonal log ever
@@ -25,57 +25,56 @@ GameState.tryNudge = function(cell, dir) {
     // monster stands in cell
     let logCell = cell.nextCell(dir)
     let log = logCell.topLog()
-        // nudging means: trying to push a lying in parallel to my movement
+        // nudging means: moving together with the log for one field.
     if (!log || log.axis != dir.axis) {
-        return
+        return false;
     }
     let targetCell = logCell.nextCell(dir);
 
     function confirmNudge() {
         log.moveTo(dir);
         log.axis = 0; // standing now
-        if (log.getElevation() == -2) {
+        if (log.getElevation() == -2 && !log.isRaft) {
             log.axis = dir.axis; //... unless in the water
         }
+        log.settle() // done moving, might combine
     }
 
     // I cannot nudge if I cannot move out of my cell
     if (cell.topLog() && cell.topLog().axis == -dir.axis) {
         return false;
     }
+    // I cannot nudge if I cannot move into the next cell
+    let baseLog = log.getLogBelow();
+    if (baseLog && baseLog.axis == -dir.axis) {
+        return false;
+    }
+
+    // how high can I lift my log?
+    let logElev = log.getElevation();
+    let maxElev = logElev + (log.isRaft ? 0 : 1);
+
+    // there might be some log in the way, might may be bumped out
     let targetLog = targetCell.topLog();
     let targetElev = targetCell.getElevation();
-    let logElev = log.getElevation();
-    if (!targetLog) {
-        // just nudge on top of an otherwise empty field
-        if (targetElev <= logElev + 1) {
-            confirmNudge()
+    if (targetLog) {
+        // too high, cannot lift
+        if (maxElev < targetLog.getElevation) {
+            return false;
         }
-        return
-    } else {
-        TMPLOG("targetLogFound")
-            // nudge onto a field containing another log
-        let targetLogElev = targetLog.getElevation();
-        if (targetLogElev >= 2 + logElev) {
-            // the other log lies on higher level → nothing happens
-            return;
-        }
-        // bump that log
+        // I will bump into it
         GameState.bumpLog(targetLog, dir);
-        if (targetLog.cell != targetCell) {
-            // it has moved out of the cell, I can move now.
-            confirmNudge();
-            return
-        } else {
-            // it is still there
-            if (targetElev <= logElev + 1) {
-                // the top of the other log is high enough to lift my log on top
-                log.moveTo(dir);
-                log.axis = 0;
-            }
-            return
-        }
+        // that log has moved out now, update
+        targetLog = null;
+        targetElev = targetCell.getElevation();
     }
+    // this happens on land or raft
+    if (targetElev <= maxElev) {
+        // the top of the other log is high enough to lift my log on top
+        confirmNudge()
+        return true;
+    }
+    return false;
 }
 GameState.rollLog = function(log, dir) {
     let cell = log.cell
@@ -97,59 +96,77 @@ GameState.rollLog = function(log, dir) {
         if (logElev >= targetElev) {
             /* make the move and keep rolling*/
             confirmRoll();
+            return true;
         }
-        return
+        return false
     }
-    let otherLogElev = nextLog.getElevation()
-    if (otherLogElev > logElev) {
+    let nextLogElev = nextLog.getElevation()
+    if (nextLogElev > logElev) {
         // cannot bump log above me
-        return
+        return false
     }
     // log is at same level or below
     if (nextLog.axis == -log.axis) {
         // can roll on this log if below
         if (logElev >= targetElev) {
             confirmRoll();
+            return true;
         }
-        return
+        return false
     } else if (nextLog.axis == log.axis) {
-        if (otherLogElev >= logElev - 1) {
+        if (nextLogElev >= logElev - 1) {
             // I hit that log from the side
             GameState.bumpLog(nextLog, dir)
+            return false;
         } else {
-            console.log("Unimplemented Interaction: Log Falling on parallel other log.")
+            // I fall on top of that log. Try to push off.
+            if (this.bumpLog(nextLog, dir)) {
+                return true; // I can now move into that spot
+            } else {
+                // I fall on top of it and make a raft
+                nextLog.makeRaftWith(log);
+                return true;
+            }
         }
     } else if (nextLog.axis == 0) {
         // rolls over when higher
         if (logElev >= targetElev) {
             confirmRoll();
-            return
+            return true;
         } else {
             // bumps otherwise
             GameState.bumpLog(nextLog, dir)
-            return
+            return false;
         }
     }
 }
 GameState.bumpLog = function(log, dir) {
-    if (log.axis == 0) {
-        // may bump it upwards by 1 stump
-        if (nextCell.getElevation() <= log.getElevation() + 1) {
-            log.axis = dir.axis;
-            log.moveTo(dir);
-            return true;
-        }
+    let elev = log.getElevation();
+    let nextCell = log.cell.nextCell(dir);
+    let nextElev = nextCell.getElevation();
+    if (elev < 0) return false; // cannot bump in water
+    if (log.isRaft) {
+        return false;
     } else if (log.axis == dir.axis) {
         // cannot be bumped (can only be nudged)
         return false;
-    } else {
+    } else if (log.axis == 0) {
+        // may bump it upwards by 1 stump
+        if (nextElev <= elev + 1) {
+            TMPLOG("moving")
+            log.axis = dir.axis;
+            log.moveTo(dir);
+            log.settle();
+            return true;
+        }
+    } else /* log.axis == -dir.axis */ {
         GameState.rollLog(log, dir);
     }
     return false;
 }
 GameState.tryPush = function(cell, dir) {
     log = cell.topLog()
-    nextCell = cell.nextCell(dir)
+    let nextCell = cell.nextCell(dir)
     if (!log) return false;
     this.bumpLog(log, dir)
 }
@@ -161,17 +178,62 @@ GameState.tryChop = function(cell, dir) {
     }
     return false;
 }
+GameState.tryFloat = function(cell, dir) {
+    TMPLOG(cell, dir)
+    if (!cell.floats()) {
+        return false;
+    }
+    let nextCell = cell.nextCell(dir)
+    if (nextCell.getElevation() >= 0) {
+        return false; // no space
+    }
+    // moves the complete content of the cell into the next cell
+    do {
+        console.assert(nextCell.logs.length == 0);
+        for (let log of cell.logs) {
+            log.moveTo(dir)
+        }
+        if (this.playerCell == cell) {
+            this.playerCell = nextCell;
+        }
+        cell = nextCell;
+        nextCell = cell.nextCell(dir);
+    } while (nextCell && nextCell.getElevation() < 0);
+
+    if (cell != this.playerCell) {
+        // keep rolling, slide off, whatever.
+        this.bumpLog(cell.topLog())
+    }
+    return true;
+}
+
+GameState.focusPlayer = function() {
+    let island = this.getIsland(this.playerCell);
+    let isGood = View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
+    if (island && (!this.onIsland || !isGood)) {
+        View.showIsland(island);
+    } else if (!isGood) {
+        View.cx = this.playerCell.x;
+        View.cy = this.playerCell.y;
+    }
+    this.onIsland = island != null;
+}
 
 GameState.input = function(dir) {
+    this.snapshot() // for undo. Todo: only if stuff happened
+    if (this.fastTraveling) {
+        console.log("Aborting Fast Travel.")
+        this.fastTraveling = false;
+    }
     console.log("Going " + dir.name);
     this.lastDir = dir; // direction monster is facing
     let cell1 = this.playerCell
     let cell2 = cell1.nextCell(dir);
-
     if (this.canMove(cell1, dir)) {
         this.playerCell = this.playerCell.nextCell(dir)
-    } else if (cell1.isRaft()) {
-
+    } else if (cell2.getElevation() > cell1.getElevation() && this.tryFloat(cell1, reverse(dir))) {
+        // can still push stuff on land, but cannot nudge or chip
+        this.tryPush(cell2, dir);
     } else if (this.tryNudge(cell1, dir)) {
 
     } else if (this.tryPush(cell2, dir)) {
@@ -179,11 +241,5 @@ GameState.input = function(dir) {
     } else if (this.tryChop(cell2, dir)) {
         this.tryPush(cell2, dir);
     }
-
-    let island = this.getIsland(this.playerCell);
-    if (island && !this.onIsland) {
-        View.showIsland(island);
-    }
-    this.onIsland = island != null;
-    View.draw();
+    this.focusPlayer()
 }

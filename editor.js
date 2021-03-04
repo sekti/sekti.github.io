@@ -81,6 +81,15 @@ canvas.onmousemove = function(event) {
     View.clickIsDrag = true;
 }
 
+canvas.onclick = function(event) {
+    let pos = View.canvasToTile(event.offsetX, event.offsetY)
+    if (GameState.fastTraveling && !View.clickIsDrag) {
+        GameState.endFastTravel(pos.x, pos.y)
+        event.preventDefault();
+        View.draw()
+    }
+}
+
 function processInput(event) {
     if (event.ctrlKey || event.metaKey || event.altKey) {
         return
@@ -105,16 +114,22 @@ function processInput(event) {
             break;
         case "g":
             View.showGrid = !View.showGrid;
-            View.draw();
             break;
         case "r":
             GameState.resetIsland();
+            break;
+        case "t":
+            GameState.startFastTravel(true);
+            break;
+        case "z":
+            GameState.undo();
             break;
         default:
             doneSomething = false;
     }
     if (doneSomething) {
         event.preventDefault();
+        View.draw();
     }
 }
 

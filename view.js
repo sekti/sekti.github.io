@@ -42,6 +42,8 @@ TILESET = {
     MONSTER_UP: new Tile("props", 256, 15),
     START: new Tile("props", 256, 16),
     RESETPOS: new Tile("props", 256, 17),
+    RAFT_VERTICAL: new Tile("props", 256, 18),
+    RAFT_HORIZONTAL: new Tile("props", 256, 19),
 }
 
 View = {
@@ -69,6 +71,13 @@ View.tileToCanvas = function(x, y) {
         width: this.pxPerTile,
         height: this.pxPerTile
     };
+}
+View.tileVisible = function(x, y, tilesTolerance = 0) {
+    const TOLERANCE = this.pxPerTile * tilesTolerance;
+    let canvasX = this.xToCanvasX(x);
+    let canvasY = this.yToCanvasY(y);
+    return canvasX > TOLERANCE && canvasX < canvas.width - TOLERANCE &&
+        canvasY > TOLERANCE && canvasY < canvas.height - TOLERANCE;
 }
 View.canvasToTile = function(px, py) {
     let ret = {
@@ -191,20 +200,34 @@ View.drawStaticProps = function(x, y) {
         View.drawProp(x, y, tile);
     }
     let char = GameState.getTerrain(x, y)
-    if (char == '1') {
-        placeTile(TILESET.STUMP);
-    } else if (char == '2') {
-        placeTile(TILESET.STUMP);
-    } else if (char == 'P') {
-        placeTile(TILESET.POSTBOX);
-    } else if (char == 'B') {
-        placeTile(TILESET.BOULDER);
-    } else if (char == 'b') {
-        placeTile(TILESET.ROCK);
-    } else if (char == 'M') {
-        placeTile(TILESET.START);
-    } else if (char == 'R') {
-        placeTile(TILESET.RESETPOS);
+    switch (char) {
+        case '1':
+        case '2':
+            placeTile(TILESET.STUMP);
+            break;
+        case 'P':
+            placeTile(TILESET.POSTBOX);
+            break;
+        case 'B':
+            placeTile(TILESET.BOULDER);
+            break;
+        case 'b':
+            placeTile(TILESET.ROCK);
+            break;
+        case 'M':
+            placeTile(TILESET.START);
+            break;
+        case 'R':
+            placeTile(TILESET.RESETPOS);
+            break;
+        case 'S':
+            placeTile(TILESET.SNOWMAN);
+            break;
+        case ' ':
+        case '·':
+            break;
+        default:
+            console.assert(false, "Invalid Terrain: ", char)
     }
 }
 
