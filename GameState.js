@@ -127,7 +127,7 @@ GameState.endFastTravel = function(x, y) {
             return;
         }
         this.snapshot() // for undo
-        this.playerCell = cell;
+        this.playerCell = this.fastTraveling == CHEAT_TRAVEL ? cell : cell.nextCell(RIGHT);
         this.fastTraveling = false;
     }
 }
@@ -150,6 +150,7 @@ GameState.resetIsland = function() {
         return
     }
     console.log("Resetting Island.")
+    this.snapshot(); // for undo
     for (cell of island) {
         if (cell.terrain == '1' && cell.chopped) {
             this.recallLog(cell)

@@ -146,16 +146,30 @@ GameState.bumpLog = function(log, dir) {
     let nextElev = nextCell.getElevation();
     if (elev < 0) return false; // cannot bump in water
     if (log.isRaft) {
+        // cannot bump the raft itself (because it is on land or unreachable)
         return false;
+    } else if (this.tryFloat(log.cell, dir)) {
+        return true;
     } else if (log.axis == dir.axis) {
         // cannot be bumped (can only be nudged)
+        let support = log.getLogBelow();
+        if (support && support.axis == -dir.axis) {
+            // unless it can roll of an orthogonal log
+            if (nextElev < elev) {
+                // and if its going down
+                log.moveTo(dir);
+                log.axis = 0
+                log.settle();
+                return true;
+            }
+        }
         return false;
     } else if (log.axis == 0) {
         // may bump it upwards by 1 stump
         if (nextElev <= elev + 1) {
-            TMPLOG("moving")
             log.axis = dir.axis;
             log.moveTo(dir);
+            this.bumpLog(log, dir); // might roll over something, so try bumping again
             log.settle();
             return true;
         }
@@ -179,7 +193,6 @@ GameState.tryChop = function(cell, dir) {
     return false;
 }
 GameState.tryFloat = function(cell, dir) {
-    TMPLOG(cell, dir)
     if (!cell.floats()) {
         return false;
     }
@@ -190,8 +203,8 @@ GameState.tryFloat = function(cell, dir) {
     // moves the complete content of the cell into the next cell
     do {
         console.assert(nextCell.logs.length == 0);
-        for (let log of cell.logs) {
-            log.moveTo(dir)
+        while (cell.logs.length) {
+            cell.topLog().moveTo(dir)
         }
         if (this.playerCell == cell) {
             this.playerCell = nextCell;
@@ -202,7 +215,7 @@ GameState.tryFloat = function(cell, dir) {
 
     if (cell != this.playerCell) {
         // keep rolling, slide off, whatever.
-        this.bumpLog(cell.topLog())
+        this.bumpLog(cell.topLog(), dir)
     }
     return true;
 }
@@ -220,23 +233,25 @@ GameState.focusPlayer = function() {
 }
 
 GameState.input = function(dir) {
-    this.snapshot() // for undo. Todo: only if stuff happened
     if (this.fastTraveling) {
-        console.log("Aborting Fast Travel.")
-        this.fastTraveling = false;
+        console.log("Refusing input while fast-traveling.")
+        return;
     }
+    this.snapshot() // for undo. Todo: only if stuff happened
     console.log("Going " + dir.name);
     this.lastDir = dir; // direction monster is facing
     let cell1 = this.playerCell
     let cell2 = cell1.nextCell(dir);
     if (this.canMove(cell1, dir)) {
         this.playerCell = this.playerCell.nextCell(dir)
+    } else if (cell2.terrain == 'P' && cell1.getElevation() < cell2.baseElevation()) {
+        GameState.startFastTravel()
     } else if (cell2.getElevation() > cell1.getElevation() && this.tryFloat(cell1, reverse(dir))) {
-        // can still push stuff on land, but cannot nudge or chip
+        // can still push stuff on land, but cannot nudge or chop
         this.tryPush(cell2, dir);
-    } else if (this.tryNudge(cell1, dir)) {
-
     } else if (this.tryPush(cell2, dir)) {
+
+    } else if (this.tryNudge(cell1, dir)) {
 
     } else if (this.tryChop(cell2, dir)) {
         this.tryPush(cell2, dir);
