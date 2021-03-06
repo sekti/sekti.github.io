@@ -21,12 +21,14 @@ GameState.canMove = function(cell, dir) {
     return true;
 }
 
+// nudging means: moving together with the log for one field.
 GameState.tryNudge = function(cell, dir) {
     // monster stands in cell
     let logCell = cell.nextCell(dir)
     let log = logCell.topLog()
-        // nudging means: moving together with the log for one field.
-    if (!log || log.axis != dir.axis) {
+        // can only nudge rafts and aligned logs
+    if (!log) return false;
+    if (log.axis != dir.axis && !log.isRaft) {
         return false;
     }
     let targetCell = logCell.nextCell(dir);
@@ -38,6 +40,7 @@ GameState.tryNudge = function(cell, dir) {
             log.axis = dir.axis; //... unless in the water
         }
         log.settle() // done moving, might combine
+        GameState.playerCell = logCell
     }
 
     // I cannot nudge if I cannot move out of my cell
@@ -77,69 +80,58 @@ GameState.tryNudge = function(cell, dir) {
     return false;
 }
 GameState.rollLog = function(log, dir) {
-    let cell = log.cell
-    let nextCell = cell.nextCell(dir)
-    let logElev = log.getElevation()
-    let targetElev = nextCell.getElevation()
-    let nextLog = nextCell.topLog();
-
-    let confirmRoll = function() {
-        log.moveTo(dir)
-        GameState.rollLog(log, dir);
+    //           [cell]→[nextCell]
+    // [Monster]→[log ]→[nextLog ]
+    let logs = log.sibling ? [log, log.sibling] : [log];
+    let logElev = log.getElevation();
+    let cells = logs.map(l => l.cell);
+    let nextCells = cells.map(c => c.nextCell(dir));
+    let nextElev = Math.max(...nextCells.map(c => c.getElevation()));
+    let bumpable = function(l) {
+        if (!l) return false;
+        if (l.isRaft || l.axis == dir.axis) return false;
+        // standing logs or logs lying in parallel
+        return true;
     }
+    let nextHardElev = Math.max(...nextCells.map(c => {
+        return bumpable(c.topLog()) ? c.topLog().getElevation() : c.getElevation();
+    }))
 
     if (logElev < 0) {
         // logs in the water do not roll
-        return
+        return false;
     }
-    if (!nextLog) {
-        if (logElev >= targetElev) {
-            /* make the move and keep rolling*/
-            confirmRoll();
-            return true;
-        }
-        return false
+
+    if (nextHardElev > logElev) {
+        // hard obstacle in the way
+        return false;
     }
-    let nextLogElev = nextLog.getElevation()
-    if (nextLogElev > logElev) {
-        // cannot bump log above me
-        return false
-    }
-    // log is at same level or below
-    if (nextLog.axis == -log.axis) {
-        // can roll on this log if below
-        if (logElev >= targetElev) {
-            confirmRoll();
-            return true;
-        }
-        return false
-    } else if (nextLog.axis == log.axis) {
-        if (nextLogElev >= logElev - 1) {
-            // I hit that log from the side
-            GameState.bumpLog(nextLog, dir)
-            return false;
+    let confirmRoll = function(goOn) {
+        logs.forEach(l => l.moveTo(dir))
+        if (goOn) {
+            GameState.rollLog(logs[0], dir); // continue
         } else {
-            // I fall on top of that log. Try to push off.
-            if (this.bumpLog(nextLog, dir)) {
-                return true; // I can now move into that spot
-            } else {
-                // I fall on top of it and make a raft
-                nextLog.makeRaftWith(log);
-                return true;
-            }
-        }
-    } else if (nextLog.axis == 0) {
-        // rolls over when higher
-        if (logElev >= targetElev) {
-            confirmRoll();
-            return true;
-        } else {
-            // bumps otherwise
-            GameState.bumpLog(nextLog, dir)
-            return false;
+            log.settle();
         }
     }
+    let nextBumpableLogs = nextCells.map(c => c.topLog()).filter(l => l && bumpable(l));
+    if (!nextBumpableLogs.length) {
+        // no log to bump found → keep rolling rolling rolling
+        confirmRoll(true);
+        return true;
+    }
+
+    if (nextElev > logElev) {
+        // bumpable obstacle in the way, bump all I can reach
+        nextBumpableLogs.filter(l => l.getTopElevation() > logElev).forEach(l => GameState.bumpLog(l, dir));
+        return false;
+    }
+    // there are bumpable obstacles *below*, bump the highest
+    nextBumpableLogs.filter(l => l.getTopElevation() == nextElev).forEach(l => GameState.bumpLog(l, dir));
+    // roll into the field, but stop there
+    confirmRoll(false);
 }
+
 GameState.bumpLog = function(log, dir) {
     let elev = log.getElevation();
     let nextCell = log.cell.nextCell(dir);
@@ -152,9 +144,10 @@ GameState.bumpLog = function(log, dir) {
         return true;
     } else if (log.axis == dir.axis) {
         // cannot be bumped (can only be nudged)
+        // unless it can roll off an orthogonal log
+        if (log.sibling) return false;
         let support = log.getLogBelow();
         if (support && support.axis == -dir.axis) {
-            // unless it can roll of an orthogonal log
             if (nextElev < elev) {
                 // and if its going down
                 log.moveTo(dir);
@@ -165,6 +158,28 @@ GameState.bumpLog = function(log, dir) {
         }
         return false;
     } else if (log.axis == 0) {
+        if (log.sibling) {
+            // chopping 2-trees is complicated
+            if (nextCell.getElevation() > 2) {
+                let nextLog = nextCell.topLog();
+                nextLog && this.bumpLog(nextLog, dir)
+                if (nextCell.getElevation() > 2) {
+                    //still an obstacle? → can't chop
+                    return false;
+                }
+            }
+            let farCell = nextCell.nextCell(dir)
+            let farLog = farCell.topLog()
+            farLog && this.bumpLog(farLog, dir); // whatever is in there, it gets bumped.
+            log.axis = log.sibling.axis = dir.axis;
+            log.moveTo(dir);
+            if (farCell.getElevation() <= 2) {
+                // far Cell empty enough, can move in there
+                log.sibling.moveTo(dir)
+                log.sibling.moveTo(dir)
+            }
+            return true;
+        }
         // may bump it upwards by 1 stump
         if (nextElev <= elev + 1) {
             log.axis = dir.axis;
@@ -180,14 +195,23 @@ GameState.bumpLog = function(log, dir) {
 }
 GameState.tryPush = function(cell, dir) {
     log = cell.topLog()
-    let nextCell = cell.nextCell(dir)
     if (!log) return false;
-    this.bumpLog(log, dir)
+    return this.bumpLog(log, dir)
 }
 GameState.tryChop = function(cell, dir) {
     if (cell.terrain == "1" && !cell.chopped) {
         cell.chopped = true;
         cell.addLog(new Log(cell))
+        return true;
+    }
+    if (cell.terrain == "2" && !cell.chopped) {
+        cell.chopped = true;
+        let l1 = new Log(cell);
+        l2 = new Log(cell);
+        l1.sibling = l2;
+        l2.sibling = l1;
+        cell.addLog(l1);
+        cell.addLog(l2);
         return true;
     }
     return false;

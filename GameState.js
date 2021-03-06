@@ -103,6 +103,15 @@ GameState.recallLog = function(origin) {
     for (cellRow of this.cells) {
         for (cell of cellRow) {
             for (log of cell.logs) {
+                if (log.isRaft && log.origin2 == origin) {
+                    log.isRaft = false;
+                    log.origin2 = undefined;
+                }
+                if (log.isRaft && log.origin == origin) {
+                    log.isRaft = false;
+                    log.origin = log.origin2;
+                    log.origin2 = undefined;
+                }
                 if (log.origin == origin) {
                     cell.removeLog(log)
                 }
@@ -120,7 +129,6 @@ GameState.startFastTravel = function(cheat) {
 }
 GameState.endFastTravel = function(x, y) {
     let cell = this.cells[y] ? this.cells[y][x] : undefined;
-    TMPLOG(cell)
     if (cell) {
         if (this.fastTraveling == FAST_TRAVEL && cell.terrain != 'P') {
             console.log("Cannot fast-travel to cell of type ", cell.terrain)
@@ -152,7 +160,7 @@ GameState.resetIsland = function() {
     console.log("Resetting Island.")
     this.snapshot(); // for undo
     for (cell of island) {
-        if (cell.terrain == '1' && cell.chopped) {
+        if ((cell.terrain == '1' || cell.terrain == '2') && cell.chopped) {
             this.recallLog(cell)
         }
     }
@@ -245,6 +253,17 @@ GameState.loadFrom = function(saveGame) {
     this.loadDynamicStateFrom(saveGame)
 }
 
+GameState.isWater = function(x, y) {
+        let char = GameState.getTerrain(x, y)
+        if (char == ' ') return true;
+        if (char == 'B' || char == 'b') {
+            let numWater = DIRS.map(dir => [x + dir.dx, y + dir.dy]).filter(pair =>
+                GameState.getTerrain(pair[0], pair[1]) == ' ').length;
+            if (numWater >= 3) return true;
+        }
+        return false;
+    }
+    // default background is grass. This covers trees, post-boxes, rocks, snowmen
 GameState.snapshot = function() {
     let snapshot = {}
     this.saveDynamicStateTo(snapshot);

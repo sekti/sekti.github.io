@@ -21,10 +21,22 @@ class Log {
             log.makeRaftWith(this)
         }
     }
+    getTopElevation() {
+        return this.getElevation() + this.height();
+    }
     getElevation() {
-        return this.cell.getElevation(this);
+        // special case for standing double log
+        if (this.sibling && this.axis == 0) return 1; // must be on stump
+        let logs = this.sibling ? [this, this.sibling] : [this];
+        let elevs = logs.map(log => {
+            let below = log.getLogBelow();
+            return below ? below.getElevation() + below.height() : log.cell.baseElevation();
+        })
+        return Math.max(...elevs);
     }
     height() {
+        // special case for standing double log
+        if (this.sibling && this.axis == 0) return 8;
         if (this.isRaft) { return 2 };
         return this.axis ? 2 : 4; // standing logs are 4 stumps high.
     }
@@ -48,6 +60,20 @@ class Log {
             }
         } else if (this.isRaft && !this.sibling) {
             tile = (this.isRaft == HORIZONTAL ? TILESET.RAFT_HORIZONTAL : TILESET.RAFT_VERTICAL);
+        } else if (this.sibling) {
+            if (!this.axis) {
+                // still standing on its stump
+                if (this.cell.logs.indexOf(this) != 0) {
+                    return; //bottom one takes care of this
+                } else {
+                    tile = TILESET.LOG2_STANDING;
+                }
+            } else if (this.axis == HORIZONTAL) {
+                tile = this.cell.x < this.sibling.cell.x ? TILESET.LOG2_HORIZONTAL_LEFT : TILESET.LOG2_HORIZONTAL_RIGHT;
+            } else {
+                // this.axis == VERTICAL
+                tile = this.cell.y < this.sibling.cell.y ? TILESET.LOG2_VERTICAL_TOP : TILESET.LOG2_VERTICAL_BOTTOM;
+            }
         }
         View.drawProp(this.cell.x, this.cell.y - this.getElevation() * STUMP_VISUAL_HEIGHT, tile)
     }
@@ -58,6 +84,13 @@ class Log {
         this.isRaft = this.axis; // important for resets
         this.axis = 0; // otherwise directionless
         this.origin2 = log.origin;
+    }
+    isCanonicalSibling() {
+        if (!this.sibling) return false;
+        // am I lexicographically larger?
+        if (this.cell.y != this.sibling.cell.y) { return this.cell.y > this.sibling.cell.y }
+        if (this.cell.x != this.sibling.cell.x) { return this.cell.x > this.sibling.cell.x }
+        return this.cell.logs.indexOf(this) < this.cell.logs.indexOf(this.sibling);
     }
     toSave() {
         let save = {}
@@ -73,6 +106,13 @@ class Log {
             save.oy2 = this.origin2.y;
         }
         save.axis = this.axis
+        if (this.isCanonicalSibling()) {
+            let s = this.sibling;
+            save.sx = s.cell.x;
+            save.sy = s.cell.y;
+            save.sz = s.cell.logs.indexOf(s);
+        }
+
         return save
     }
 }
@@ -91,6 +131,13 @@ GameState.readlogFromSave = function(save) {
         log.isRaft = save.isRaft;
         log.origin2 = this.cells[save.oy2][save.ox2]
         log.origin2.chopped = true;
+    }
+    if (save.sx != null) {
+        // has sibling, which is already loaded
+        let sibling = this.cells[save.sy][save.sx].logs[save.sz]
+        console.assert(sibling, "Sibling of a double-log segment could not be located.")
+        log.sibling = sibling;
+        sibling.sibling = log;
     }
 }
 
@@ -138,17 +185,9 @@ class CellState {
         let length = this.logs.length;
         return length ? this.logs[length - 1] : null;
     }
-    getElevation(queryLog) {
-        // total elevation (for queryLog == null) or elevation of given log
-        let elev = this.baseElevation();
-        for (const log of this.logs) {
-            if (log == queryLog) {
-                return elev
-            }
-            elev += log.height();
-        }
-        console.assert(queryLog == null, "elevation of log requested that does not exist.");
-        return elev;
+    getElevation() {
+        let tl = this.topLog();
+        return tl ? tl.getElevation() + tl.height() : this.baseElevation();
     }
     nextCell(dir) {
         let y = this.y + dir.dy;

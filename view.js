@@ -34,16 +34,19 @@ TILESET = {
     LOG_STANDING: new Tile("props", 256, 7),
     LOG_HORIZONTAL: new Tile("props", 256, 8),
     LOG_VERTICAL: new Tile("props", 256, 9),
-    LOG2_HORIZONTAL: new Tile("props", 256, 10),
-    LOG2_VERTICAL: new Tile("props", 256, 11),
-    MONSTER_RIGHT: new Tile("props", 256, 12),
-    MONSTER_LEFT: new Tile("props", 256, 13),
-    MONSTER_DOWN: new Tile("props", 256, 14),
-    MONSTER_UP: new Tile("props", 256, 15),
-    START: new Tile("props", 256, 16),
-    RESETPOS: new Tile("props", 256, 17),
-    RAFT_VERTICAL: new Tile("props", 256, 18),
-    RAFT_HORIZONTAL: new Tile("props", 256, 19),
+    LOG2_STANDING: new Tile("props", 256, 10),
+    LOG2_HORIZONTAL_LEFT: new Tile("props", 256, 11),
+    LOG2_HORIZONTAL_RIGHT: new Tile("props", 256, 12),
+    LOG2_VERTICAL_BOTTOM: new Tile("props", 256, 13),
+    LOG2_VERTICAL_TOP: new Tile("props", 256, 14),
+    MONSTER_RIGHT: new Tile("props", 256, 15),
+    MONSTER_LEFT: new Tile("props", 256, 16),
+    MONSTER_DOWN: new Tile("props", 256, 17),
+    MONSTER_UP: new Tile("props", 256, 18),
+    START: new Tile("props", 256, 19),
+    RESETPOS: new Tile("props", 256, 20),
+    RAFT_VERTICAL: new Tile("props", 256, 21),
+    RAFT_HORIZONTAL: new Tile("props", 256, 22),
 }
 
 View = {
@@ -182,19 +185,6 @@ View.drawGrid = function() {
     }
 }
 
-View.drawTileBackground = function(x, y) {
-    // default background is grass. This covers trees, post-boxes, rocks, snowmen
-    let tile = ((y + x) % 2) ? TILESET.GRASS : TILESET.GRASS2;
-    let char = GameState.getTerrain(x, y)
-    if (char == ' ') tile = TILESET.WATER;
-    if (char == 'B' || char == 'b') {
-        let numWater = DIRS.map(dir => [x + dir.dx, y + dir.dy]).filter(pair =>
-            GameState.getTerrain(pair[0], pair[1]) == ' ').length;
-        if (numWater >= 3) tile = TILESET.WATER
-    }
-    this.drawTile(x, y, tile)
-}
-
 View.drawStaticProps = function(x, y) {
     function placeTile(tile) {
         View.drawProp(x, y, tile);
@@ -242,7 +232,16 @@ View.draw = function() {
     let box = this.getVisibleTiles();
     for (let y = box.ymin; y <= box.ymax; ++y) {
         for (let x = box.xmin; x <= box.xmax; ++x) {
-            this.drawTileBackground(x, y);
+            if (GameState.isWater(x, y)) {
+                this.drawTile(x, y, TILESET.WATER);
+            }
+        }
+    }
+    for (let y = box.ymin; y <= box.ymax; ++y) {
+        for (let x = box.xmin; x <= box.xmax; ++x) {
+            if (!GameState.isWater(x, y)) {
+                this.drawTile(x, y, ((y + x) % 2) ? TILESET.GRASS : TILESET.GRASS2);
+            }
         }
         for (let x = box.xmin; x <= box.xmax; ++x) {
             this.drawStaticProps(x, y);
