@@ -47,6 +47,10 @@ TILESET = {
     RESETPOS: new Tile("props", 256, 20),
     RAFT_VERTICAL: new Tile("props", 256, 21),
     RAFT_HORIZONTAL: new Tile("props", 256, 22),
+    RAFT2_HORIZONTAL_RIGHT: new Tile("props", 256, 23),
+    RAFT2_HORIZONTAL_LEFT: new Tile("props", 256, 24),
+    RAFT2_VERTICAL_BOTTOM: new Tile("props", 256, 25),
+    RAFT2_VERTICAL_TOP: new Tile("props", 256, 26),
 }
 
 View = {

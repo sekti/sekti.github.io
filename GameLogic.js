@@ -31,13 +31,15 @@ GameState.tryNudge = function(cell, dir) {
     if (log.axis != dir.axis && !log.isRaft) {
         return false;
     }
-    let targetCell = logCell.nextCell(dir);
 
     function confirmNudge() {
         log.moveTo(dir);
-        log.axis = 0; // standing now
+        if (log.sibling) log.sibling.moveTo(dir);
+        if (!log.sibling && !log.isRaft) {
+            log.axis = 0; // standing now
+        }
         if (log.getElevation() == -2 && !log.isRaft) {
-            log.axis = dir.axis; //... unless in the water
+            log.axis = dir.axis; //... when in the water, retains its directionality
         }
         log.settle() // done moving, might combine
         GameState.playerCell = logCell
@@ -55,14 +57,24 @@ GameState.tryNudge = function(cell, dir) {
 
     // how high can I lift my log?
     let logElev = log.getElevation();
-    let maxElev = logElev + (log.isRaft ? 0 : 1);
+    let maxElev = logElev;
+    if (!log.isRaft && !log.sibling) maxElev += 1; // those can be lifted
 
     // there might be some log in the way, might may be bumped out
+    let targetCell = logCell.nextCell(dir);
+    if (log.sibling) {
+        if (targetCell.topLog() != log.sibling) {
+            // something else is lying on the log I want to nudge
+            return false;
+        }
+        // what needs to be empty is the cell beyond
+        targetCell = targetCell.nextCell(dir);
+    }
     let targetLog = targetCell.topLog();
     let targetElev = targetCell.getElevation();
     if (targetLog) {
-        // too high, cannot lift
-        if (maxElev < targetLog.getElevation) {
+        if (maxElev < targetLog.getElevation()) {
+            // too high, cannot lift
             return false;
         }
         // I will bump into it
@@ -184,12 +196,25 @@ GameState.bumpLog = function(log, dir) {
         if (nextElev <= elev + 1) {
             log.axis = dir.axis;
             log.moveTo(dir);
-            this.bumpLog(log, dir); // might roll over something, so try bumping again
+            let below = log.getLogBelow(log);
+            TMPLOG(below)
+            if (below && below.axis == -dir.axis && log.cell.nextCell(dir).getElevation() < log.getElevation()) {
+                // roll over?
+                log.moveTo(dir);
+                log.axis = 0;
+            }
             log.settle();
             return true;
         }
+        let nextLog = nextCell.topLog()
+        if (nextLog && nextLog.getElevation() < log.getTopElevation()) {
+            // I might be able to bump this away
+            if (this.bumpLog(nextLog, dir)) {
+                this.bumpLog(log, dir); // try again
+            }
+        }
     } else /* log.axis == -dir.axis */ {
-        GameState.rollLog(log, dir);
+        return GameState.rollLog(log, dir);
     }
     return false;
 }
@@ -228,7 +253,7 @@ GameState.tryFloat = function(cell, dir) {
     do {
         console.assert(nextCell.logs.length == 0);
         while (cell.logs.length) {
-            cell.topLog().moveTo(dir)
+            cell.logs[0].moveTo(dir)
         }
         if (this.playerCell == cell) {
             this.playerCell = nextCell;
