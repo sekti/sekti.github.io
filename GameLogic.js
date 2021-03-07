@@ -152,9 +152,12 @@ GameState.bumpLog = function(log, dir) {
     if (log.isRaft) {
         // cannot bump the raft itself (because it is on land or unreachable)
         return false;
-    } else if (this.tryFloat(log.cell, dir)) {
-        return true;
-    } else if (log.axis == dir.axis) {
+    }
+    // only the player can push rafts, so I removed this:
+    /* else if (this.tryFloat(log.cell, dir)) {
+        return true; 
+    } */
+    else if (log.axis == dir.axis) {
         // cannot be bumped (can only be nudged)
         // unless it can roll off an orthogonal log
         if (log.sibling) return false;
@@ -198,8 +201,8 @@ GameState.bumpLog = function(log, dir) {
             log.moveTo(dir);
             let below = log.getLogBelow(log);
             TMPLOG(below)
-            if (below && below.axis == -dir.axis && log.cell.nextCell(dir).getElevation() < log.getElevation()) {
-                // roll over?
+                // can roll over log below of the right axis if not in water and the cell beyond is free
+            if (below && below.getElevation() >= 0 && below.axis == -dir.axis && log.cell.nextCell(dir).getElevation() < log.getElevation()) {
                 log.moveTo(dir);
                 log.axis = 0;
             }
@@ -240,6 +243,52 @@ GameState.tryChop = function(cell, dir) {
         return true;
     }
     return false;
+}
+GameState.pushRaft = function(raft, dir, playerOnRaft) {
+    let Raft = raft.getRaftComplex();
+    // the raft complex moves until terrain or a foreign log is at or above the field a raft log moves in
+    function canMove() {
+        return Raft.every(raftLog => {
+            let nextCell = raftLog.cell.nextCell(dir);
+            let h = raftLog.getElevation();
+            return nextCell.baseElevation() <= h && // terrain
+                nextCell.logs.every(log =>
+                    Raft.indexOf(log) >= 0 || log.getTopElevation() <= h //non-raft obstacle
+                )
+        })
+    }
+    if (!canMove()) { return false; }
+    do {
+        Raft.forEach(log => log.moveTo(dir));
+        if (playerOnRaft) this.playerCell = this.playerCell.nextCell(dir);
+    } while (canMove());
+
+    Raft.forEach(log => GameState.bumpLog(log, dir)); // keep rolling, slide off or something.
+    return true;
+}
+GameState.tryPushFloat = function(cell, dir) {
+    // player in cell, pushes in direction dir.
+    let nextCell = cell.nextCell(dir);
+    if (cell.getElevation() >= nextCell.getElevation()) {
+        return false; // monster cannot push something beneath him
+    }
+
+    let playerRaft = cell.topLog() ? cell.topLog().getRaft() : null;
+    let otherRaft = nextCell.topLog() ? nextCell.topLog().getRaft() : null;
+    if (playerRaft == otherRaft) {
+        // cannot push a raft from the raft. (or both rafts are null)
+        return false;
+    }
+    // one raft or two different rafts are involved.
+    let res = false;
+    if (playerRaft) res |= !!this.pushRaft(playerRaft, reverse(dir), true);
+    if (otherRaft) {
+        res |= !!this.pushRaft(otherRaft, dir, false);
+    } else if (res) {
+        // no other raft, but I rated away, and pushed something:
+        this.tryPush(nextCell, dir);
+    }
+    return res;
 }
 GameState.tryFloat = function(cell, dir) {
     if (!cell.floats()) {
@@ -295,10 +344,14 @@ GameState.input = function(dir) {
         this.playerCell = this.playerCell.nextCell(dir)
     } else if (cell2.terrain == 'P' && cell1.getElevation() < cell2.baseElevation()) {
         GameState.startFastTravel()
-    } else if (cell2.getElevation() > cell1.getElevation() && this.tryFloat(cell1, reverse(dir))) {
+    } else if (this.tryPushFloat(cell1, dir)) {
+
+    }
+    /* } cell2.getElevation() > cell1.getElevation() && this.tryFloat(cell1, reverse(dir))) {
         // can still push stuff on land, but cannot nudge or chop
         this.tryPush(cell2, dir);
-    } else if (this.tryPush(cell2, dir)) {
+    }*/
+    else if (this.tryPush(cell2, dir)) {
 
     } else if (this.tryNudge(cell1, dir)) {
 

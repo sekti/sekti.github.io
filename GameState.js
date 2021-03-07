@@ -86,8 +86,11 @@ GameState.setTerrain = function(x, y, char) {
         }
     }
     // todo: clear tile
+    if (cell.chopped) {
+        this.recallLog(cell)
+        this.undoStack = [] // bad things could happen
+    }
     cell.terrain = char
-    this.undoStack = [] // bad things could happen
 }
 GameState.getTerrain = function(x, y) {
     if (x >= 0 && y >= 0 && y < GameState.dimY && x < GameState.dimX) {

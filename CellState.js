@@ -26,7 +26,7 @@ class Log {
     }
     getElevation() {
         // special case for standing double log
-        if (this.sibling && this.axis == 0) return 1; // must be on stump
+        if (this.sibling && !this.isRaft && this.axis == 0) return 1; // must be on stump
         let logs = this.sibling ? [this, this.sibling] : [this];
         let elevs = logs.map(log => {
             let below = log.getLogBelow();
@@ -36,7 +36,7 @@ class Log {
     }
     height() {
         // special case for standing double log
-        if (this.sibling && this.axis == 0) return 8;
+        if (this.sibling && !this.isRaft && this.axis == 0) return 8;
         if (this.isRaft) { return 2 };
         return this.axis ? 2 : 4; // standing logs are 4 stumps high.
     }
@@ -61,13 +61,13 @@ class Log {
     }
     getRaft() {
         // am I lying on a (unique) raft?
-        if (this.hasGroundContact()) return false;
         if (this.isRaft && this.getElevation() < 0) {
             if (this.sibling && !this.isCanonicalSibling()) {
                 return this.sibling;
             }
             return this;
         }
+        if (this.hasGroundContact()) return null;
         let logs = this.sibling ? [this, this.sibling] : [this];
         let rafts = logs.map(log => log.getLogBelow(true)).filter(_ => _).map(log => log.getRaft()).filter(_ => _);
         switch (rafts.length) {
@@ -94,7 +94,7 @@ class Log {
                 let s = above.sibling;
                 if (s.hasGroundContact()) continue;
                 let supp = s.getLogBelow(true);
-                if (raft.indexOf(supp) == -1) continue;
+                if (supp && raft.indexOf(supp) == -1) continue;
             }
             raft.push(above);
             if (above.sibling) {
@@ -106,13 +106,10 @@ class Log {
     draw() {
         let tile;
         if (this.sibling) {
-            if (this.isRaft) {
-                if (this.axis == HORIZONTAL) {
-                    tile = this.cell.x < this.sibling.cell.x ? TILESET.RAFT2_HORIZONTAL_LEFT : TILESET.RAFT2_HORIZONTAL_RIGHT
-                } else {
-                    // this.axis == VERTICAL
-                    tile = this.cell.y < this.sibling.cell.y ? TILESET.RAFT2_VERTICAL_TOP : TILESET.RAFT2_VERTICAL_BOTTOM
-                }
+            if (this.isRaft == HORIZONTAL) {
+                tile = this.cell.x < this.sibling.cell.x ? TILESET.RAFT2_HORIZONTAL_LEFT : TILESET.RAFT2_HORIZONTAL_RIGHT
+            } else if (this.isRaft == VERTICAL) {
+                tile = this.cell.y < this.sibling.cell.y ? TILESET.RAFT2_VERTICAL_TOP : TILESET.RAFT2_VERTICAL_BOTTOM
             } else if (!this.axis) {
                 // still standing on its stump
                 if (this.cell.logs.indexOf(this) != 0) {
@@ -158,6 +155,7 @@ class Log {
             log.sibling.cell.removeLog(log.sibling)
             this.isRaft = this.axis;
             this.sibling.isRaft = this.axis;
+            this.axis = this.sibling.axis = 0;
             this.origin2 = log.origin;
             this.sibling.origin2 = log.sibling.origin;
             return
@@ -234,9 +232,6 @@ class CellState {
         this.y = y;
         this.logs = []
         this.terrain = terrain;
-    }
-    floats() {
-        return this.logs.length && this.logs[0].isRaft;
     }
     baseElevation() {
         switch (this.terrain) {
