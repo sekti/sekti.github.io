@@ -8,6 +8,11 @@ const DIRS = [LEFT, RIGHT, UP, DOWN]
 
 function reverse(dir) { return DIRS[DIRS.indexOf(dir) ^ 1] }
 
+function dirFromDxDy(dx, dy) {
+    if (dx) return dx > 0 ? RIGHT : LEFT;
+    else return dy > 0 ? DOWN : UP;
+}
+
 GameState = {
     dimX: null,
     dimY: null,

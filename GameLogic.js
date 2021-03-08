@@ -34,7 +34,6 @@ GameState.tryNudge = function(cell, dir) {
 
     function confirmNudge() {
         log.moveTo(dir);
-        if (log.sibling) log.sibling.moveTo(dir);
         if (!log.sibling && !log.isRaft) {
             log.axis = 0; // standing now
         }
@@ -116,10 +115,11 @@ GameState.rollLog = function(log, dir) {
 
     if (nextHardElev > logElev) {
         // hard obstacle in the way
+        log.settle();
         return false;
     }
     let confirmRoll = function(goOn) {
-        logs.forEach(l => l.moveTo(dir))
+        logs.forEach(l => l.moveTo(dir, false))
         if (goOn) {
             GameState.rollLog(logs[0], dir); // continue
         } else {
@@ -136,6 +136,7 @@ GameState.rollLog = function(log, dir) {
     if (nextElev > logElev) {
         // bumpable obstacle in the way, bump all I can reach
         nextBumpableLogs.filter(l => l.getTopElevation() > logElev).forEach(l => GameState.bumpLog(l, dir));
+        log.settle();
         return false;
     }
     // there are bumpable obstacles *below*, bump the highest
@@ -187,12 +188,12 @@ GameState.bumpLog = function(log, dir) {
             let farLog = farCell.topLog()
             farLog && this.bumpLog(farLog, dir); // whatever is in there, it gets bumped.
             log.axis = log.sibling.axis = dir.axis;
-            log.moveTo(dir);
+            log.moveTo(dir, false); // now one lying on stump
             if (farCell.getElevation() <= 2) {
                 // far Cell empty enough, can move in there
-                log.sibling.moveTo(dir)
-                log.sibling.moveTo(dir)
+                log.moveTo(dir) // now both lying off stump
             }
+            log.settle();
             return true;
         }
         // may bump it upwards by 1 stump
@@ -258,7 +259,7 @@ GameState.pushRaft = function(raft, dir, playerOnRaft) {
     }
     if (!canMove()) { return false; }
     do {
-        Raft.forEach(log => log.moveTo(dir));
+        Raft.forEach(log => log.moveTo(dir, false));
         if (playerOnRaft) this.playerCell = this.playerCell.nextCell(dir);
     } while (canMove());
 
@@ -288,33 +289,6 @@ GameState.tryPushFloat = function(cell, dir) {
         this.tryPush(nextCell, dir);
     }
     return res;
-}
-GameState.tryFloat = function(cell, dir) {
-    if (!cell.floats()) {
-        return false;
-    }
-    let nextCell = cell.nextCell(dir)
-    if (nextCell.getElevation() >= 0) {
-        return false; // no space
-    }
-    // moves the complete content of the cell into the next cell
-    do {
-        console.assert(nextCell.logs.length == 0);
-        while (cell.logs.length) {
-            cell.logs[0].moveTo(dir)
-        }
-        if (this.playerCell == cell) {
-            this.playerCell = nextCell;
-        }
-        cell = nextCell;
-        nextCell = cell.nextCell(dir);
-    } while (nextCell && nextCell.getElevation() < 0);
-
-    if (cell != this.playerCell) {
-        // keep rolling, slide off, whatever.
-        this.bumpLog(cell.topLog(), dir)
-    }
-    return true;
 }
 
 GameState.focusPlayer = function(refocus = false) {

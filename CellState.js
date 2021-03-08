@@ -6,12 +6,101 @@ class Log {
         this.cell = cell;
         this.origin = cell;
     }
-    moveTo(dir) {
+    moveTo(dir, moveSibling = true) {
         this.cell.removeLog(this)
         this.cell = this.cell.nextCell(dir);
         this.cell.addLog(this);
+        if (this.sibling && moveSibling) {
+            this.sibling.cell.removeLog(this.sibling)
+            this.sibling.cell = this.sibling.cell.nextCell(dir);
+            this.sibling.cell.addLog(this.sibling);
+        }
     }
     settle() {
+        function supported(log) {
+            return log.getLogBelow(true) || log.getElevation() == log.cell.baseElevation();
+        }
+        if (this.sibling) {
+            // logs supported by the ground are fine
+            if (this.hasGroundContact()) {
+                return;
+            }
+            let support1 = this.getLogBelow(true)
+            let support2 = this.sibling.getLogBelow(true)
+            if (!support1) {
+                // think about it from the other perspective
+                this.sibling.settle();
+                return;
+            }
+            // log is supported by support1, log.sibling might be supported
+            console.assert(support1, "Unsupported double log?")
+                // rafts count like the ground
+            if (support1.isRaft || (support2 && support2.isRaft)) {
+                return
+            }
+
+            // if the support is in the water, I might have to turn it.
+            if (this.getElevation() == 0) {
+                // if I can turn a single log in the water to allow raft making, I will
+                if (!support2 && !support1.sibling && support1.axis != this.axis) {
+                    support1.axis = this.axis;
+                    this.settle() // try again
+                    return;
+                } else if (support2 && support1.axis != support2.axis) {
+                    // one of them can be turned, don't care which.
+                    support1.axis = support2.axis = this.axis;
+                    this.settle();
+                    return;
+                }
+            }
+            // raft building on land or water, now requiring aligned logs
+            if (support1.axis == this.axis && (!support2 || support2.axis == this.axis)) {
+                // both aligned.
+                // are they the same log?
+                if (support1.sibling == support2) {
+                    this.makeRaftWith(support1) //automatically merges the siblings
+                    return;
+                }
+                // all merges are separate
+                let divorcedSibling = this.sibling;
+                this.divorce();
+                support1.divorce();
+                this.makeRaftWith(support1);
+                if (support2) {
+                    divorcedSibling.makeRaftWith(support2);
+                }
+                return;
+            }
+
+            // 2 logs don't like to be supported on only one side
+            // if that is neither a raft nor terrain
+            if (!support2) {
+                // try to slide off in this direction
+                let dx = this.sibling.cell.x - this.cell.x;
+                let dy = this.sibling.cell.y - this.cell.y;
+                let dir = dirFromDxDy(dx, dy);
+                let nextCell = this.sibling.cell.nextCell(dir);
+                if (nextCell.getElevation() < this.getElevation()) {
+                    // slide over
+                    this.moveTo(dir);
+                    // might do something there
+                    this.settle();
+                    return;
+                }
+                // try to push out the supporting log, if that is in water and a 2 log
+                if (support1.sibling && support1.getElevation() < 0) {
+                    dx = support1.sibling.cell.x - support1.cell.x;
+                    dy = support1.sibling.cell.y - support1.cell.y;
+                    dir = dirFromDxDy(dx, dy);
+                    nextCell = support1.sibling.cell.nextCell(dir);
+                    if (nextCell.getElevation() < 0) {
+                        support1.moveTo(dir);
+                        return; // settled now (bottom log in water)
+                    }
+                }
+            }
+            return; // no further settling maneuvers known to me.
+        }
         // check if I need to combine with other logs
         let log = this.getLogBelow()
             // can only combine with lying logs that are not rafts
@@ -275,8 +364,11 @@ class CellState {
         let x = this.x + dir.dx;
         if (y >= 0 && x >= 0 && y < GameState.dimY && x < GameState.dimX) {
             return GameState.cells[y][x];
+        } else {
+            // returning a dummy cells reduces the number of problems
+            // but might not solve all of them.
+            return DUMMY;
         }
-        return null;
     }
     saveLogsTo(logs) {
         for (log of this.logs) {
@@ -284,3 +376,5 @@ class CellState {
         }
     }
 }
+
+DUMMY = new CellState(-1, -1, 'B'); // large boulder
