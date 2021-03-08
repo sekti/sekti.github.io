@@ -1,7 +1,11 @@
 const canvas = $("canvas")[0];
 const ctx = canvas.getContext('2d');
-ctx.canvas.width = canvas.offsetWidth;
-ctx.canvas.height = canvas.offsetHeight;
+
+function updateCanvas() {
+    ctx.canvas.width = canvas.clientWidth;
+    ctx.canvas.height = canvas.clientHeight;
+}
+
 const TILE_SIZE = 256;
 const pxPerTileMAX = TILE_SIZE;
 const pxPerTileMIN = 10;
@@ -127,7 +131,6 @@ View.showIsland = function(island) {
     minX -= RADIUS_SHOWN;
     maxY += RADIUS_SHOWN;
     minY -= RADIUS_SHOWN;
-
     this.cx = (minX + maxX) / 2;
     this.cy = (minY + maxY) / 2;
     this.pxPerTile = Math.min(canvas.width / (maxX - minX), canvas.height / (maxY - minY));
@@ -227,8 +230,7 @@ View.drawStaticProps = function(x, y) {
 
 View.draw = function() {
     // in case of resize
-    ctx.canvas.width = canvas.offsetWidth;
-    ctx.canvas.height = canvas.offsetHeight;
+    updateCanvas();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.rect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#888888";

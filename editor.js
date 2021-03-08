@@ -136,6 +136,7 @@ function processInput(event) {
 window.onload = function() {
     console.log("Loading default level...")
         //loadFromText(defaultLevelJSON) // '{"map":["          ","   · ···  ","     ·2·  ","   B  ··  ","   ··PR·  ","   ·1···  ","          "],"dimX":10,"dimY":7,"startX":6,"startY":3}'
+    updateCanvas(); // loading a save will need to know the canvas size to focus
     GameState.loadFrom(originalLevelSave);
     Editor.addControls();
     View.draw();

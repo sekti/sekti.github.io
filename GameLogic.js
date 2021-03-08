@@ -200,8 +200,7 @@ GameState.bumpLog = function(log, dir) {
             log.axis = dir.axis;
             log.moveTo(dir);
             let below = log.getLogBelow(log);
-            TMPLOG(below)
-                // can roll over log below of the right axis if not in water and the cell beyond is free
+            // can roll over log below of the right axis if not in water and the cell beyond is free
             if (below && below.getElevation() >= 0 && below.axis == -dir.axis && log.cell.nextCell(dir).getElevation() < log.getElevation()) {
                 log.moveTo(dir);
                 log.axis = 0;
@@ -318,9 +317,9 @@ GameState.tryFloat = function(cell, dir) {
     return true;
 }
 
-GameState.focusPlayer = function() {
+GameState.focusPlayer = function(refocus = false) {
     let island = this.getIsland(this.playerCell);
-    let isGood = View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
+    let isGood = !refocus && View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
     if (island && (!this.onIsland || !isGood)) {
         View.showIsland(island);
     } else if (!isGood) {
@@ -352,11 +351,17 @@ GameState.input = function(dir) {
         this.tryPush(cell2, dir);
     }*/
     else if (this.tryPush(cell2, dir)) {
-
+        if (this.canMove(cell1, dir)) {
+            // try again
+            this.playerCell = this.playerCell.nextCell(dir);
+        }
     } else if (this.tryNudge(cell1, dir)) {
 
     } else if (this.tryChop(cell2, dir)) {
         this.tryPush(cell2, dir);
+    } else {
+        // nothing happened, need no snapshot
+        this.undoStack.pop();
     }
     this.focusPlayer()
 }

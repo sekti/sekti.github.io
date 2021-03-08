@@ -254,6 +254,7 @@ GameState.loadFrom = function(saveGame) {
         this.loadMapFrom(saveGame)
     }
     this.loadDynamicStateFrom(saveGame)
+    this.focusPlayer(true);
 }
 
 GameState.isWater = function(x, y) {
