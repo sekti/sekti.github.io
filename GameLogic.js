@@ -14,8 +14,8 @@ GameState.canMove = function(cell, dir) {
         // cannot jump more than one step up
         return false;
     }
-    if (cell.topLog() && cell.topLog().axis == -dir.axis && dh >= -1) {
-        // cannot jump off of orthogonal log, except when jumping down at least two steps
+    if (cell.topLog() && cell.topLog().axis == -dir.axis && dh >= 0) {
+        // cannot jump off of orthogonal log, except when jumping down at least one step
         return false;
     }
     return true;
@@ -37,20 +37,17 @@ GameState.tryNudge = function(cell, dir) {
         if (!log.sibling && !log.isRaft) {
             log.axis = 0; // standing now
         }
-        if (log.getElevation() == -2 && !log.isRaft) {
-            log.axis = dir.axis; //... when in the water, retains its directionality
-        }
-        log.settle() // done moving, might combine
+        log.settle(dir.axis) // done moving, might combine
         GameState.playerCell = logCell
     }
 
     // I cannot nudge if I cannot move out of my cell
-    if (cell.topLog() && cell.topLog().axis == -dir.axis) {
+    if (cell.topLog() && cell.topLog().axis == -dir.axis || cell.getElevation() + 1 < log.getNextBelowElevation()) {
         return false;
     }
-    // I cannot nudge if I cannot move into the next cell
+    // I cannot nudge if I cannot move into the next cell because I would step on an orthogonal log or water.
     let baseLog = log.getLogBelow();
-    if (baseLog && baseLog.axis == -dir.axis) {
+    if (baseLog && baseLog.axis == -dir.axis || !baseLog && log.cell.terrain == ' ') {
         return false;
     }
 
@@ -60,16 +57,42 @@ GameState.tryNudge = function(cell, dir) {
     if (!log.isRaft && !log.sibling) maxElev += 1; // those can be lifted
 
     // there might be some log in the way, might may be bumped out
-    let targetCell = logCell.nextCell(dir);
+    let targetCells = [logCell.nextCell(dir)];
     if (log.sibling) {
-        if (targetCell.topLog() != log.sibling) {
-            // something else is lying on the log I want to nudge
+        // something is lying on top of my sibling → don't know how to handle
+        if (log.sibling.cell.getElevation() > log.getTopElevation()) {
             return false;
         }
-        // what needs to be empty is the cell beyond
-        targetCell = targetCell.nextCell(dir);
+        if (log.axis == dir.axis || log.isRaft == dir.axis) {
+            // actually what needs to be empty is the cell beyond
+            targetCells = [targetCells[0].nextCell(dir)];
+        } else {
+            // sideways raft nudges into two cells!
+            console.assert(log.isRaft);
+            targetCells.push(log.sibling.cell.nextCell(dir));
+        }
     }
-    let targetLog = targetCell.topLog();
+    // terrain in the way?
+    if (targetCells.some(c => c.baseElevation() > maxElev)) {
+        return false;
+    }
+    // logs in the target cells
+    let targetLogs = targetCells.map(c => c.topLog()).filter(_ => _);
+    // is one of them too high and not bumpable?
+    if (targetLogs.some(tl => tl.getTopElevation() > maxElev && (tl.isRaft || tl.axis == dir.axis))) {
+        return false;
+    }
+    // bump the target logs that are high enough
+    let somethingHappend = targetLogs
+        .filter(tl => tl.getTopElevation() > log.getElevation())
+        .map(tl => GameState.bumpLog(tl, dir)).some(_ => _);
+
+    if (targetCells.every(c => c.getElevation() <= maxElev)) {
+        confirmNudge();
+        return true;
+    }
+    /*
+
     let targetElev = targetCell.getElevation();
     if (targetLog) {
         if (maxElev < targetLog.getElevation()) {
@@ -88,7 +111,7 @@ GameState.tryNudge = function(cell, dir) {
         confirmNudge()
         return true;
     }
-    return false;
+    return false;*/
 }
 GameState.rollLog = function(log, dir) {
     //           [cell]→[nextCell]
@@ -127,22 +150,26 @@ GameState.rollLog = function(log, dir) {
         }
     }
     let nextBumpableLogs = nextCells.map(c => c.topLog()).filter(l => l && bumpable(l));
-    if (!nextBumpableLogs.length) {
-        // no log to bump found → keep rolling rolling rolling
+    if (!nextBumpableLogs.length || nextHardElev >= nextElev) {
+        // no log to bump found or bumpable stuff is below a non bumpable obstacle
+        // → keep rolling rolling rolling
         confirmRoll(true);
         return true;
     }
 
     if (nextElev > logElev) {
         // bumpable obstacle in the way, bump all I can reach
-        nextBumpableLogs.filter(l => l.getTopElevation() > logElev).forEach(l => GameState.bumpLog(l, dir));
+        let doneSomething = nextBumpableLogs
+            .filter(l => l.getTopElevation() > logElev)
+            .map(l => GameState.bumpLog(l, dir)).some(_ => _);
         log.settle();
-        return false;
+        return doneSomething;
     }
     // there are bumpable obstacles *below*, bump the highest
     nextBumpableLogs.filter(l => l.getTopElevation() == nextElev).forEach(l => GameState.bumpLog(l, dir));
     // roll into the field, but stop there
     confirmRoll(false);
+    return true;
 }
 
 GameState.bumpLog = function(log, dir) {
@@ -168,7 +195,7 @@ GameState.bumpLog = function(log, dir) {
                 // and if its going down
                 log.moveTo(dir);
                 log.axis = 0
-                log.settle();
+                log.settle(dir.axis);
                 return true;
             }
         }
@@ -186,7 +213,10 @@ GameState.bumpLog = function(log, dir) {
             }
             let farCell = nextCell.nextCell(dir)
             let farLog = farCell.topLog()
-            farLog && this.bumpLog(farLog, dir); // whatever is in there, it gets bumped.
+            if (farLog && farLog.getTopElevation() > nextCell.getElevation()) {
+                // bump if my second piece falls onto obstacle
+                this.bumpLog(farLog, dir)
+            }
             log.axis = log.sibling.axis = dir.axis;
             log.moveTo(dir, false); // now one lying on stump
             if (farCell.getElevation() <= 2) {
@@ -205,8 +235,11 @@ GameState.bumpLog = function(log, dir) {
             if (below && below.getElevation() >= 0 && below.axis == -dir.axis && log.cell.nextCell(dir).getElevation() < log.getElevation()) {
                 log.moveTo(dir);
                 log.axis = 0;
+            } else if (below && below.getElevation() == -2 && !below.sibling && !below.isRaft) {
+                // in this special case, the game seems to force the top-logs axis on the bottom logs axis.
+                below.axis = log.axis;
             }
-            log.settle();
+            log.settle(dir.axis);
             return true;
         }
         let nextLog = nextCell.topLog()
@@ -214,6 +247,7 @@ GameState.bumpLog = function(log, dir) {
             // I might be able to bump this away
             if (this.bumpLog(nextLog, dir)) {
                 this.bumpLog(log, dir); // try again
+                return true;
             }
         }
     } else /* log.axis == -dir.axis */ {
@@ -309,7 +343,6 @@ GameState.input = function(dir) {
         return;
     }
     this.snapshot() // for undo. Todo: only if stuff happened
-    console.log("Going " + dir.name);
     this.lastDir = dir; // direction monster is facing
     let cell1 = this.playerCell
     let cell2 = cell1.nextCell(dir);

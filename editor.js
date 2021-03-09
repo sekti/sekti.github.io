@@ -50,13 +50,6 @@ Editor.addControls = function() {
             Editor.selectTool(terrain);
         });
     }
-    $("#canvas").on("click", event => {
-        pos = View.canvasToTile(event.offsetX, event.offsetY);
-        if (pos != null && !View.clickIsDrag && this.selectedTool) {
-            Editor.placeTile(pos.x, pos.y, this.selectedTool);
-            View.draw();
-        }
-    });
 }
 
 canvas.onwheel = function(event) {
@@ -87,6 +80,12 @@ canvas.onclick = function(event) {
         GameState.endFastTravel(pos.x, pos.y)
         event.preventDefault();
         View.draw()
+    } else {
+        pos = View.canvasToTile(event.offsetX, event.offsetY);
+        if (pos != null && !View.clickIsDrag && Editor.selectedTool) {
+            Editor.placeTile(pos.x, pos.y, Editor.selectedTool);
+            View.draw();
+        }
     }
 }
 

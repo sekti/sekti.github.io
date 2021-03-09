@@ -64,14 +64,14 @@ GameState.drawDynamicProps = function(x, y) {
     }
 }
 
-GameState.getIsland = function(root) {
+GameState.getIsland = function(root, rocksAreSeparators = false) {
     // flood fill
     let unvisited = [root]
     let island = new Set()
     while (unvisited.length) {
         let cell = unvisited.pop()
         if (!cell || island.has(cell)) continue;
-        if (cell.terrain == ' ' || cell.terrain == 'B') continue; // not island
+        if (cell.terrain == ' ' || cell.terrain == 'B' || cell.terrain == 'b' && rocksAreSeparators) continue; // not island
         island.add(cell);
         DIRS.forEach(dir => unvisited.push(cell.nextCell(dir)));
     }
@@ -83,7 +83,7 @@ GameState.setTerrain = function(x, y, char) {
     if (char == 'R') {
         /* reset position, only one can exist per island */
         this.setTerrain(x, y, '·'); // make grass
-        let island = this.getIsland(cell);
+        let island = this.getIsland(cell, true);
         for (let cell2 of island) {
             if (cell2.terrain == 'R') {
                 this.setTerrain(cell2.x, cell2.y, '·')
@@ -112,10 +112,12 @@ GameState.recallLog = function(origin) {
         for (cell of cellRow) {
             for (log of cell.logs) {
                 if (log.isRaft && log.origin2 == origin) {
+                    log.axis = log.isRaft;
                     log.isRaft = false;
                     log.origin2 = undefined;
                 }
                 if (log.isRaft && log.origin == origin) {
+                    log.axis = log.isRaft;
                     log.isRaft = false;
                     log.origin = log.origin2;
                     log.origin2 = undefined;
@@ -153,12 +155,24 @@ GameState.resetIsland = function() {
         console.log("Refusing reset because player is not on an island.")
         return;
     }
-    let resetCell = null
-    for (cell of island) {
-        if (cell.terrain == 'R') {
-            resetCell = cell
+    let resetCell
+
+    function searchResets() {
+        resetCell = null;
+        let resetPositionCount = 0;
+        for (cell of island) {
+            if (cell.terrain == 'R') {
+                resetCell = cell
+                resetPositionCount++;
+            }
         }
+        return resetPositionCount
     }
+    if (searchResets() > 1) {
+        island = this.getIsland(this.playerCell, true);
+        searchResets();
+    }
+
     if (resetCell) {
         this.playerCell = resetCell
     } else if (this.playerCell.terrain == '1' || this.playerCell.terrain == '2') {

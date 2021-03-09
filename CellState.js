@@ -16,7 +16,7 @@ class Log {
             this.sibling.cell.addLog(this.sibling);
         }
     }
-    settle() {
+    settle(preferredAxis) { // dir is the direction a standing log assumes if it turns out its in water
         function supported(log) {
             return log.getLogBelow(true) || log.getElevation() == log.cell.baseElevation();
         }
@@ -101,14 +101,23 @@ class Log {
             }
             return; // no further settling maneuvers known to me.
         }
+        // if I am in water, I need to assume a direction
+        if (this.axis == 0 && this.getElevation() == -2 && !this.isRaft) {
+            this.axis = preferredAxis;
+        }
         // check if I need to combine with other logs
         let log = this.getLogBelow()
             // can only combine with lying logs that are not rafts
-        if (!log || log.isRaft || !log.axis) return;
+        if (!log || log.isRaft || !log.axis || this.isRaft) return;
         // same orientation or one is in water
         if (this.axis == log.axis || log.getElevation() < 0) {
             log.makeRaftWith(this)
         }
+    }
+    getNextBelowElevation() {
+        // elevation of whatever is below this log (usually equal to getElevation())
+        let below = this.getLogBelow();
+        return below ? below.getTopElevation() : this.cell.baseElevation();
     }
     getTopElevation() {
         return this.getElevation() + this.height();
@@ -236,7 +245,7 @@ class Log {
     }
     makeRaftWith(log) {
         console.assert(!this.isRaft && !log.isRaft, "Cannot make raft out of rafts.");
-        console.assert(this.axis && log.axis, "Cannot make raft with upright log.");
+        console.assert(this.axis, "Cannot make raft with upright log.");
 
         if (this.sibling && log.sibling && this.sibling.cell == log.sibling.cell) {
             // make double raft
@@ -333,6 +342,7 @@ class CellState {
             case ' ':
                 return -2;
             case '·':
+            case 'R':
                 return 0;
             case '1':
                 return this.chopped ? 1 : 5;

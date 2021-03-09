@@ -14,21 +14,15 @@
         }
         
         canvas {
-            border: 1px solid black;
-            flex: 0.5 0.5 100%;
+            position: absolute;
+            /* border: 1px solid black;*/
             padding: 0pt;
+            margin: 0pt;
             min-height: 100px;
             min-width: 100px;
-        }
-        
-        .page {
+            width: 100%;
+            height: 100%;
             justify-content: center;
-            display: flex;
-            flex-flow: column;
-            align-items: stretch;
-            padding: 10px;
-            height: calc(100% - 20px);
-            text-align: center;
         }
         
         #content {
@@ -38,10 +32,16 @@
         }
         
         h3 {
-            font-size: 50px;
+            text-align: center;
+            font-size: 70px;
+            text-shadow: 0px 0px 13px #FFFFFF;
             font-family: 'Akaya Telivigala', cursive;
             font-variant: small-caps;
-            margin: 10px;
+            position: absolute;
+            top: 20px;
+            margin: 0px;
+            width: 100%;
+            pointer-events: none;
         }
         
         #editor-buttons,
@@ -49,6 +49,13 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
+        }
+        
+        #editor-buttons {
+            position: absolute;
+            bottom: 10px;
+            width: 100%;
+            pointer-events: none;
         }
         
         input {
@@ -60,6 +67,7 @@
             margin: 0.5pt;
             width: 100pt;
             height: 100pt;
+            pointer-events: all;
         }
         
         input.terrain.selected {
@@ -72,23 +80,21 @@
 </head>
 
 <body>
-    <div class="page">
-        <div id="textures" style="display:none">
-            <img id="background-tiles" src="img/background-tiles.png">
-            <img id="props" src="img/props.png">
-        </div>
-        <h3>a Monster's Editor</h3>
-        <div id="menu-buttons"></div>
-        <canvas id="canvas"></canvas>
-        <div id="editor-buttons"></div>
-        <script src="jquery-3.5.1.min.js"></script>
-        <script src="view.js"></script>
-        <script src="editor.js"></script>
-        <script src="GameState.js"></script>
-        <script src="CellState.js"></script>
-        <script src="GameLogic.js"></script>
-        <script src="originalLevel.js"></script>
+    <canvas id="canvas"></canvas>
+    <div id="textures" style="display:none">
+        <img id="background-tiles" src="img/background-tiles.png">
+        <img id="props" src="img/props.png">
     </div>
+    <h3>a Monster's Editor</h3>
+    <!--<div id="menu-buttons"></div>-->
+    <div id="editor-buttons"></div>
+    <script src="jquery-3.5.1.min.js"></script>
+    <script src="view.js"></script>
+    <script src="editor.js"></script>
+    <script src="GameState.js"></script>
+    <script src="CellState.js"></script>
+    <script src="GameLogic.js"></script>
+    <script src="originalLevel.js"></script>
 </body>
 
 </html>
