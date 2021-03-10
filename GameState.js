@@ -108,6 +108,7 @@ GameState.resetAll = function() {
 }
 
 GameState.recallLog = function(origin) {
+    origin.logs = [] // remove all logs in that cell
     for (cellRow of this.cells) {
         for (cell of cellRow) {
             for (log of cell.logs) {
@@ -305,7 +306,9 @@ GameState.undo = function() {
 function saveToClipboardData(event) {
     let saveGame = {}
     GameState.saveTo(saveGame)
-    event.clipboardData.setData('text/plain', JSON.stringify(saveGame))
+        // make it look pretty in monospace
+    let string = JSON.stringify(saveGame).replace(/"map":\[/, '"map":[\n').replace(/"\,/g, '",\n').replace(/"\]/, '"]\n')
+    event.clipboardData.setData('text/plain', string)
     event.preventDefault();
     console.log("Saved Map and GameState to Clipboard.")
 }

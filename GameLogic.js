@@ -291,10 +291,24 @@ GameState.pushRaft = function(raft, dir, playerOnRaft) {
                 )
         })
     }
+
+    function grindsToHalt() {
+        return Raft.some(raftLog => {
+            // stop if raft is lying on land
+            if (raftLog.getElevation() >= 0 && raftLog.hasGroundContact()) return true;
+            // stop if raft is lying on other log
+            let below = raftLog.getLogBelow(true);
+            if (below && Raft.indexOf(below) == -1) return true;
+            return false;
+        })
+    }
     if (!canMove()) { return false; }
     do {
         Raft.forEach(log => log.moveTo(dir, false));
         if (playerOnRaft) this.playerCell = this.playerCell.nextCell(dir);
+        if (grindsToHalt()) {
+            return true; // but nothing keeps rolling!
+        }
     } while (canMove());
 
     Raft.forEach(log => GameState.bumpLog(log, dir)); // keep rolling, slide off or something.
