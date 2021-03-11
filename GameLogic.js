@@ -22,96 +22,60 @@ GameState.canMove = function(cell, dir) {
 }
 
 // nudging means: moving together with the log for one field.
-GameState.tryNudge = function(cell, dir) {
-    // monster stands in cell
+GameState.findLogToNudge = function(cell, dir) {
+    // separate, because if an appropriate log is found
+    // monster will shift it into a wall and not consider other actions
     let logCell = cell.nextCell(dir)
-    let log = logCell.topLog()
-        // can only nudge rafts and aligned logs
-    if (!log) return false;
-    if (log.axis != dir.axis && !log.isRaft) {
-        return false;
-    }
+    let log = logCell.logs.find(l =>
+        l.getElevation() >= cell.getElevation() &&
+        (l.axis == dir.axis || l.isRaft)
+    );
+    if (!log) return null;
 
-    function confirmNudge() {
-        log.moveTo(dir);
-        if (!log.sibling && !log.isRaft) {
-            log.axis = 0; // standing now
-        }
-        log.settle(dir.axis) // done moving, might combine
-        GameState.playerCell = logCell
-    }
-
-    // I cannot nudge if I cannot move out of my cell
+    // I cannot try to nudge if I cannot move out of my cell
     if (cell.topLog() && cell.topLog().axis == -dir.axis || cell.getElevation() + 1 < log.getNextBelowElevation()) {
-        return false;
+        return null;
     }
     // I cannot nudge if I cannot move into the next cell because I would step on an orthogonal log or water.
     let baseLog = log.getLogBelow();
     if (baseLog && baseLog.axis == -dir.axis || !baseLog && log.cell.terrain == ' ') {
-        return false;
+        return null;
     }
-
+    return log;
+}
+GameState.tryNudge = function(log, dir) {
     // how high can I lift my log?
-    let logElev = log.getElevation();
-    let maxElev = logElev;
-    if (!log.isRaft && !log.sibling) maxElev += 1; // those can be lifted
+    let isSimpleLog = (!log.isRaft && !log.sibling && log == log.cell.topLog());
+    // get all logs that are lying on top
+    let complex = new LogComplex(log);
 
-    // there might be some log in the way, might may be bumped out
-    let targetCells = [logCell.nextCell(dir)];
-    if (log.sibling) {
-        // something is lying on top of my sibling → don't know how to handle
-        if (log.sibling.cell.getElevation() > log.getTopElevation()) {
-            return false;
+    function confirmNudge() {
+        complex.move(dir);
+        if (isSimpleLog) {
+            log.axis = 0; // standing now
         }
-        if (log.axis == dir.axis || log.isRaft == dir.axis) {
-            // actually what needs to be empty is the cell beyond
-            targetCells = [targetCells[0].nextCell(dir)];
-        } else {
-            // sideways raft nudges into two cells!
-            console.assert(log.isRaft);
-            targetCells.push(log.sibling.cell.nextCell(dir));
-        }
+        log.settle(dir.axis) // done moving, might combine
+        GameState.playerCell = GameState.playerCell.nextCell(dir)
     }
-    // terrain in the way?
-    if (targetCells.some(c => c.baseElevation() > maxElev)) {
+
+    if (complex.hasTerrainObstacles(dir, isSimpleLog)) {
         return false;
     }
     // logs in the target cells
-    let targetLogs = targetCells.map(c => c.topLog()).filter(_ => _);
+    let obstacles = complex.getLogObstacles(dir, isSimpleLog);
     // is one of them too high and not bumpable?
-    if (targetLogs.some(tl => tl.getTopElevation() > maxElev && (tl.isRaft || tl.axis == dir.axis))) {
+    if (obstacles.some(obs => obs.isRaft || obs.axis == dir.axis)) {
         return false;
     }
     // bump the target logs that are high enough
-    let somethingHappend = targetLogs
-        .filter(tl => tl.getTopElevation() > log.getElevation())
-        .map(tl => GameState.bumpLog(tl, dir)).some(_ => _);
+    let somethingHappend = obstacles.some(tl => GameState.bumpLog(tl, dir));
 
-    if (targetCells.every(c => c.getElevation() <= maxElev)) {
-        confirmNudge();
-        return true;
+    obstacles = complex.getLogObstacles(dir); // might have moved out
+    if (obstacles.length) {
+        return somethingHappend;
     }
-    /*
-
-    let targetElev = targetCell.getElevation();
-    if (targetLog) {
-        if (maxElev < targetLog.getElevation()) {
-            // too high, cannot lift
-            return false;
-        }
-        // I will bump into it
-        GameState.bumpLog(targetLog, dir);
-        // that log has moved out now, update
-        targetLog = null;
-        targetElev = targetCell.getElevation();
-    }
-    // this happens on land or raft
-    if (targetElev <= maxElev) {
-        // the top of the other log is high enough to lift my log on top
-        confirmNudge()
-        return true;
-    }
-    return false;*/
+    confirmNudge();
+    return true;
 }
 GameState.rollLog = function(log, dir) {
     //           [cell]→[nextCell]
@@ -279,39 +243,19 @@ GameState.tryChop = function(cell, dir) {
     return false;
 }
 GameState.pushRaft = function(raft, dir, playerOnRaft) {
-    let Raft = raft.getRaftComplex();
+    let Raft = new LogComplex(raft);
     // the raft complex moves until terrain or a foreign log is at or above the field a raft log moves in
-    function canMove() {
-        return Raft.every(raftLog => {
-            let nextCell = raftLog.cell.nextCell(dir);
-            let h = raftLog.getElevation();
-            return nextCell.baseElevation() <= h && // terrain
-                nextCell.logs.every(log =>
-                    Raft.indexOf(log) >= 0 || log.getTopElevation() <= h //non-raft obstacle
-                )
-        })
-    }
 
-    function grindsToHalt() {
-        return Raft.some(raftLog => {
-            // stop if raft is lying on land
-            if (raftLog.getElevation() >= 0 && raftLog.hasGroundContact()) return true;
-            // stop if raft is lying on other log
-            let below = raftLog.getLogBelow(true);
-            if (below && Raft.indexOf(below) == -1) return true;
-            return false;
-        })
-    }
-    if (!canMove()) { return false; }
+    if (!Raft.canMove(dir)) { return false; }
     do {
-        Raft.forEach(log => log.moveTo(dir, false));
+        Raft.move(dir)
         if (playerOnRaft) this.playerCell = this.playerCell.nextCell(dir);
-        if (grindsToHalt()) {
+        if (Raft.grindsToHalt()) {
             return true; // but nothing keeps rolling!
         }
-    } while (canMove());
+    } while (Raft.canMove(dir));
 
-    Raft.forEach(log => GameState.bumpLog(log, dir)); // keep rolling, slide off or something.
+    Raft.logs.forEach(log => GameState.bumpLog(log, dir)); // keep rolling, slide off or something.
     return true;
 }
 GameState.tryPushFloat = function(cell, dir) {
@@ -360,12 +304,19 @@ GameState.input = function(dir) {
     this.lastDir = dir; // direction monster is facing
     let cell1 = this.playerCell
     let cell2 = cell1.nextCell(dir);
+    let log;
     if (this.canMove(cell1, dir)) {
         this.playerCell = this.playerCell.nextCell(dir)
     } else if (cell2.terrain == 'P' && cell1.getElevation() < cell2.baseElevation()) {
         GameState.startFastTravel()
     } else if (this.tryPushFloat(cell1, dir)) {
 
+    } else if (log = this.findLogToNudge(cell1, dir)) {
+        if (this.tryNudge(log, dir)) {
+
+        } else {
+            this.undoStack.pop(); // nothing happened
+        }
     }
     /* } cell2.getElevation() > cell1.getElevation() && this.tryFloat(cell1, reverse(dir))) {
         // can still push stuff on land, but cannot nudge or chop
@@ -376,8 +327,6 @@ GameState.input = function(dir) {
             // try again
             this.playerCell = this.playerCell.nextCell(dir);
         }
-    } else if (this.tryNudge(cell1, dir)) {
-
     } else if (this.tryChop(cell2, dir)) {
         this.tryPush(cell2, dir);
     } else {

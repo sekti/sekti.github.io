@@ -177,30 +177,6 @@ class Log {
                 return rafts[0] == rafts[1] ? rafts[0] : null;
         }
     }
-    getRaftComplex() {
-        let root = this.getRaft();
-        if (!root) return null;
-        // find all logs lying (indirectly) on this raft, from bottom to top
-        let raft = [root];
-        if (root.sibling) raft.push(root.sibling);
-        let i = 0; // next log to look at
-        for (let i = 0; i < raft.length; ++i) {
-            let log = raft[i];
-            let above = log.getLogAbove(true);
-            if (!above) continue;
-            if (above.sibling) {
-                let s = above.sibling;
-                if (s.hasGroundContact()) continue;
-                let supp = s.getLogBelow(true);
-                if (supp && raft.indexOf(supp) == -1) continue;
-            }
-            raft.push(above);
-            if (above.sibling) {
-                raft.push(above.sibling);
-            }
-        }
-        return raft;
-    }
     draw() {
         let tile;
         if (this.sibling) {
@@ -320,6 +296,72 @@ GameState.readlogFromSave = function(save) {
         console.assert(sibling, "Sibling of a double-log segment could not be located.")
         log.sibling = sibling;
         sibling.sibling = log;
+    }
+}
+
+// collection of logs, e.g. a raft and what is lying on top
+class LogComplex {
+    constructor(base) {
+        console.assert(base);
+        // find all logs lying (indirectly) on this raft, from bottom to top
+        let logs = [base];
+        if (base.sibling) logs.push(base.sibling);
+        let i = 0; // next log to look at
+        for (let i = 0; i < logs.length; ++i) {
+            let log = logs[i];
+            let above = log.getLogAbove(true);
+            if (!above) continue;
+            if (above.sibling) {
+                let s = above.sibling;
+                if (s.hasGroundContact()) continue;
+                let supp = s.getLogBelow(true);
+                if (supp && logs.indexOf(supp) == -1) continue;
+            }
+            logs.push(above);
+            if (above.sibling) {
+                logs.push(above.sibling);
+            }
+        }
+        this.logs = logs;
+    }
+    hasTerrainObstacles(dir, bonusHeight = 0) {
+        return this.logs.some(complexLog => {
+            let nextCell = complexLog.cell.nextCell(dir);
+            let h = complexLog.getElevation() + bonusHeight;
+            return nextCell.baseElevation() > h;
+        })
+    }
+    getLogObstacles(dir, bonusHeight = 0) {
+        let obstacles = new Set()
+        for (let complexLog of this.logs) {
+            let nextCell = complexLog.cell.nextCell(dir);
+            let h = complexLog.getElevation() + bonusHeight;
+            for (log of nextCell.logs) {
+                if (this.logs.indexOf(log) >= 0) continue;
+                if (log.getTopElevation() > h) {
+                    obstacles.add(log);
+                }
+            }
+        }
+        return [...obstacles]
+    }
+    canMove(dir) {
+        return !this.hasTerrainObstacles(dir) && this.getLogObstacles(dir).length == 0;
+    }
+
+    move(dir) {
+        this.logs.forEach(log => log.moveTo(dir, false));
+    }
+
+    grindsToHalt() {
+        return this.logs.some(complexLog => {
+            // stop if raft is lying on land
+            if (complexLog.getElevation() >= 0 && complexLog.hasGroundContact()) return true;
+            // stop if raft is lying on other log
+            let below = complexLog.getLogBelow(true);
+            if (below && this.logs.indexOf(below) == -1) return true;
+            return false;
+        })
     }
 }
 
