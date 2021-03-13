@@ -1,4 +1,5 @@
 TERRAIN_CHARS = {
+    pan: null,
     water: ' ',
     grass: '·',
     tree: '1',
@@ -10,6 +11,7 @@ TERRAIN_CHARS = {
     reset: 'R',
     start: 'M',
 }
+MENU_FUNCTIONS = ["newmap", "changedimensions", "resetall", "editmeta", "toggletools", "about"]
 
 Editor = {
     selectedTool: null
@@ -25,15 +27,26 @@ Editor.placeTile = function(x, y, tileType) {
 }
 Editor.selectTool = function(terrain) {
     $("#editor-buttons input").removeClass("selected");
-    if (Editor.selectedTool != TERRAIN_CHARS[terrain]) {
+    if (Editor.selectedTool != TERRAIN_CHARS[terrain] && terrain) {
         $("#button-" + terrain).addClass("selected");
         Editor.selectedTool = TERRAIN_CHARS[terrain];
     } else {
         // deselect instead (prevents accidental drawing)
+        $("#button-pan").addClass("selected");
         Editor.selectedTool = null;
     }
-
 }
+
+Editor.useTool = function(px, py) {
+    if (this.selectedTool) {
+        pos = View.canvasToTile(px, py);
+        if (pos != null) {
+            Editor.placeTile(pos.x, pos.y, Editor.selectedTool);
+            View.draw();
+        }
+    }
+}
+
 Editor.addControls = function() {
     /* menuButtons = $("#menu-buttons");
     button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-save");
@@ -41,16 +54,45 @@ Editor.addControls = function() {
     button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-load");
     button.on("click", loadFromClipboard)*/
 
+    // terrain buttons
     let editorButtons = $("#editor-buttons");
     for (let terrain in TERRAIN_CHARS) {
         let pngName = "./img/button-" + terrain + ".png"
-        let button = $("<input/>").appendTo(editorButtons).attr("type", "button").addClass("terrain").attr("id", "button-" + terrain)
+        let button = $("<input/>").appendTo(editorButtons).attr("type", "button").attr("id", "button-" + terrain)
             .css("background-image", "url(" + pngName + ")");
         button.on("click", event => {
             Editor.selectTool(terrain);
         });
     }
+    Editor.selectTool(null);
+    // menu bottons
+    let menuButtons = $("#menu-buttons");
+    for (let command of MENU_FUNCTIONS) {
+        let pngName = "./img/button-" + command + ".png"
+        let button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-" + command)
+            .css("background-image", "url(" + pngName + ")");
+        button.on("click", event => {
+            Editor[command]();
+        });
+    }
 }
+
+Editor.newmap = function() {
+
+}
+Editor.changedimensions = function() {
+
+}
+Editor.resetall = function() {
+
+}
+Editor.toggletools = function() {
+
+}
+Editor.about = function() {
+
+}
+
 
 canvas.onwheel = function(event) {
     event.preventDefault();
@@ -58,9 +100,14 @@ canvas.onwheel = function(event) {
 };
 
 canvas.onmousedown = function(event) {
+    if (event.buttons & 2) { return; } // right mouse button
     event.preventDefault();
-    View.startDrag(event.clientX, event.clientY);
-    View.clickIsDrag = false;
+    if ((event.buttons & 4) || Editor.selectedTool == null) {
+        View.startDrag(event.clientX, event.clientY);
+    }
+    if (event.buttons & 1) {
+        Editor.useTool(event.offsetX, event.offsetY);
+    }
 }
 
 canvas.onmouseup = function(event) {
@@ -71,21 +118,17 @@ canvas.onmouseup = function(event) {
 canvas.onmousemove = function(event) {
     event.preventDefault();
     View.doDrag(event.clientX, event.clientY);
-    View.clickIsDrag = true;
+    if (event.buttons & 1) {
+        Editor.useTool(event.offsetX, event.offsetY);
+    }
 }
 
 canvas.onclick = function(event) {
     let pos = View.canvasToTile(event.offsetX, event.offsetY)
-    if (GameState.fastTraveling && !View.clickIsDrag) {
+    if (GameState.fastTraveling) {
         GameState.endFastTravel(pos.x, pos.y)
         event.preventDefault();
         View.draw()
-    } else {
-        pos = View.canvasToTile(event.offsetX, event.offsetY);
-        if (pos != null && !View.clickIsDrag && Editor.selectedTool) {
-            Editor.placeTile(pos.x, pos.y, Editor.selectedTool);
-            View.draw();
-        }
     }
 }
 

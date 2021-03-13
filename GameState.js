@@ -256,7 +256,7 @@ GameState.loadDynamicStateFrom = function(saveGame) {
             let cell = this.cells[y][x]
             cell.logs = []
             cell.chopped = false
-                // cell.isFriend = false; // the game does not clear this!
+            cell.isFriend = false; // deviates from the game, it does not clear this when undoing
         }
     }
     if (saveGame.logs) {
