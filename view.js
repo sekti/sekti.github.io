@@ -6,13 +6,13 @@ function updateCanvas() {
     ctx.canvas.height = canvas.clientHeight;
 }
 
-const TILE_SIZE = 256;
-const pxPerTileMAX = TILE_SIZE;
+const TILE_TEXTURE_SIZE = 128;
+const pxPerTileMAX = 2 * TILE_TEXTURE_SIZE;
 const pxPerTileMIN = 10;
 const pxPerTileFACTOR = 1.2;
 
-const STUMP_VISUAL_HEIGHT = 0.1;
-
+const STUMP_VISUAL_HEIGHT = 0.15;
+const ASPECT_RATIO = 0.75; // tiles are not as high as wide
 TMPLOG = console.log //easier to find with search and replace
 
 class Tile {
@@ -35,26 +35,27 @@ TILESET = {
     ROCK: new Tile("props", 256, 4),
     BOULDER: new Tile("props", 256, 5),
     SNOWMAN: new Tile("props", 256, 6),
-    LOG_STANDING: new Tile("props", 256, 7),
-    LOG_HORIZONTAL: new Tile("props", 256, 8),
-    LOG_VERTICAL: new Tile("props", 256, 9),
-    LOG2_STANDING: new Tile("props", 256, 10),
-    LOG2_HORIZONTAL_LEFT: new Tile("props", 256, 11),
-    LOG2_HORIZONTAL_RIGHT: new Tile("props", 256, 12),
-    LOG2_VERTICAL_BOTTOM: new Tile("props", 256, 13),
-    LOG2_VERTICAL_TOP: new Tile("props", 256, 14),
-    MONSTER_RIGHT: new Tile("props", 256, 15),
-    MONSTER_LEFT: new Tile("props", 256, 16),
-    MONSTER_DOWN: new Tile("props", 256, 17),
-    MONSTER_UP: new Tile("props", 256, 18),
-    START: new Tile("props", 256, 19),
-    RESETPOS: new Tile("props", 256, 20),
-    RAFT_VERTICAL: new Tile("props", 256, 21),
-    RAFT_HORIZONTAL: new Tile("props", 256, 22),
-    RAFT2_HORIZONTAL_RIGHT: new Tile("props", 256, 23),
-    RAFT2_HORIZONTAL_LEFT: new Tile("props", 256, 24),
-    RAFT2_VERTICAL_BOTTOM: new Tile("props", 256, 25),
-    RAFT2_VERTICAL_TOP: new Tile("props", 256, 26),
+    FRIEND: new Tile("props", 256, 7),
+    LOG_STANDING: new Tile("props", 256, 8),
+    LOG_HORIZONTAL: new Tile("props", 256, 9),
+    LOG_VERTICAL: new Tile("props", 256, 10),
+    LOG2_STANDING: new Tile("props", 256, 11),
+    LOG2_HORIZONTAL_LEFT: new Tile("props", 256, 12),
+    LOG2_HORIZONTAL_RIGHT: new Tile("props", 256, 13),
+    LOG2_VERTICAL_BOTTOM: new Tile("props", 256, 14),
+    LOG2_VERTICAL_TOP: new Tile("props", 256, 15),
+    MONSTER_RIGHT: new Tile("props", 256, 16),
+    MONSTER_LEFT: new Tile("props", 256, 17),
+    MONSTER_DOWN: new Tile("props", 256, 18),
+    MONSTER_UP: new Tile("props", 256, 19),
+    START: new Tile("props", 256, 20),
+    RESETPOS: new Tile("props", 256, 21),
+    RAFT_VERTICAL: new Tile("props", 256, 22),
+    RAFT_HORIZONTAL: new Tile("props", 256, 23),
+    RAFT2_HORIZONTAL_RIGHT: new Tile("props", 256, 24),
+    RAFT2_HORIZONTAL_LEFT: new Tile("props", 256, 25),
+    RAFT2_VERTICAL_BOTTOM: new Tile("props", 256, 26),
+    RAFT2_VERTICAL_TOP: new Tile("props", 256, 27),
 }
 
 View = {
@@ -73,14 +74,14 @@ View.xToCanvasX = function(x) {
     return canvas.width / 2 + (x - this.cx) * this.pxPerTile;
 }
 View.yToCanvasY = function(y) {
-    return canvas.height / 2 + (y - this.cy) * this.pxPerTile;
+    return canvas.height / 2 + (y - this.cy) * (this.pxPerTile * ASPECT_RATIO);
 }
 View.tileToCanvas = function(x, y) {
     return {
         xmin: this.xToCanvasX(x - 0.5),
         ymin: this.yToCanvasY(y - 0.5),
         width: this.pxPerTile,
-        height: this.pxPerTile
+        height: this.pxPerTile * ASPECT_RATIO
     };
 }
 View.tileVisible = function(x, y, tilesTolerance = 0) {
@@ -93,7 +94,7 @@ View.tileVisible = function(x, y, tilesTolerance = 0) {
 View.canvasToTile = function(px, py) {
     let ret = {
         x: Math.round((px - canvas.width / 2) / this.pxPerTile + this.cx),
-        y: Math.round((py - canvas.height / 2) / this.pxPerTile + this.cy),
+        y: Math.round((py - canvas.height / 2) / (this.pxPerTile * ASPECT_RATIO) + this.cy),
     }
     if (ret.x < 0 || ret.x >= GameState.dimX || ret.y < 0 || ret.y >= GameState.dimY) {
         return null;
@@ -104,7 +105,7 @@ View.getVisibleTiles = function() {
     const verticalTileOverhang = 2;
     const horizontalTileOverhang = 0.5;
     let dx = canvas.width / 2 / this.pxPerTile;
-    let dy = canvas.height / 2 / this.pxPerTile;
+    let dy = canvas.height / 2 / (this.pxPerTile * ASPECT_RATIO);
     return {
         xmin: Math.max(0, Math.ceil(this.cx - dx - 0.5 - horizontalTileOverhang)),
         xmax: Math.min(GameState.dimX - 1, Math.floor(this.cx + dx + 0.5 + horizontalTileOverhang)),
@@ -147,7 +148,7 @@ View.doDrag = function(x, y) {
     let dx = x - this.lastDragX;
     let dy = y - this.lastDragY;
     this.cx -= dx / this.pxPerTile;
-    this.cy -= dy / this.pxPerTile;
+    this.cy -= dy / (this.pxPerTile * ASPECT_RATIO);
     this.lastDragX = x;
     this.lastDragY = y;
     this.draw();
@@ -160,14 +161,14 @@ View.drawTexture = function(tile, x, y, dimx, dimy) {
     let px = this.xToCanvasX(x);
     let py = this.yToCanvasY(y);
     let pdimx = dimx * this.pxPerTile;
-    let pdimy = dimy * this.pxPerTile;
+    let pdimy = dimy * (this.pxPerTile * ASPECT_RATIO);
     ctx.drawImage(tile.image, tile.sx, tile.sy, tile.sWidth, tile.sHeight, px, py, pdimx, pdimy);
 }
 View.drawTile = function(x, y, tile) {
     this.drawTexture(tile, x - 0.5, y - 0.5, 1, 1);
 }
 View.drawProp = function(x, y, tile) {
-    View.drawTexture(tile, x - 1, y - 2.5, 2, 3);
+    View.drawTexture(tile, x - 1, y + 0.5 - 3 / ASPECT_RATIO, 2, 3 / ASPECT_RATIO);
 }
 
 View.drawGrid = function() {
@@ -218,7 +219,8 @@ View.drawStaticProps = function(x, y) {
             placeTile(TILESET.RESETPOS);
             break;
         case 'S':
-            placeTile(TILESET.SNOWMAN);
+            let friend = GameState.cells[y][x].isFriend;
+            friend ? placeTile(TILESET.FRIEND) : placeTile(TILESET.SNOWMAN);
             break;
         case ' ':
         case '·':

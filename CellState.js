@@ -368,6 +368,7 @@ class LogComplex {
 class CellState {
     constructor(x, y, terrain) {
         this.chopped = false;
+        this.isFriend = false;
         this.x = x;
         this.y = y;
         this.logs = []

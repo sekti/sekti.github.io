@@ -95,6 +95,9 @@ GameState.setTerrain = function(x, y, char) {
         this.recallLog(cell)
         this.undoStack = [] // bad things could happen
     }
+    if (cell.isFriend) {
+        cell.isFriend = false;
+    }
     cell.terrain = char
 }
 GameState.getTerrain = function(x, y) {
@@ -201,18 +204,26 @@ GameState.saveMapTo = function(saveGame) {
 GameState.saveDynamicStateTo = function(saveGame) {
     // dynamic part of the saves
     let logs = []
+    let friends = []
     for (let y = 0; y < this.dimY; ++y) {
         for (let x = 0; x < this.dimX; ++x) {
-            this.cells[y][x].saveLogsTo(logs)
+            let cell = this.cells[y][x];
+            cell.saveLogsTo(logs)
+            if (cell.isFriend) {
+                friends.push([cell.x, cell.y]);
+            }
         }
     }
     if (logs.length) {
         saveGame.logs = logs
     }
+    if (friends.length) {
+        saveGame.friends = friends
+    }
     if (this.playerCell != this.startCell) {
         saveGame.x = this.playerCell.x;
         saveGame.y = this.playerCell.y;
-        if (this.lastDir) {
+        if (this.lastDir != null) {
             saveGame.dir = DIRS.indexOf(this.lastDir);
         }
     }
@@ -245,6 +256,7 @@ GameState.loadDynamicStateFrom = function(saveGame) {
             let cell = this.cells[y][x]
             cell.logs = []
             cell.chopped = false
+                // cell.isFriend = false; // the game does not clear this!
         }
     }
     if (saveGame.logs) {
@@ -252,9 +264,14 @@ GameState.loadDynamicStateFrom = function(saveGame) {
             this.readlogFromSave(log);
         }
     }
+    if (saveGame.friends) {
+        for (friendPos of saveGame.friends) {
+            this.cells[friendPos[1]][friendPos[0]].isFriend = true;
+        }
+    }
     if (this.playerCell) {
         this.focusPlayer()
-        if (saveGame.dir) {
+        if (saveGame.dir != null) {
             this.lastDir = DIRS[saveGame.dir]
         }
     } else {

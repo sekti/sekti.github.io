@@ -334,6 +334,8 @@ GameState.input = function(dir) {
         }
     } else if (this.tryChop(cell2, dir)) {
         this.tryPush(cell2, dir);
+    } else if (cell2.terrain == 'S' && this.playerCell.getElevation() == 0 && !cell2.isFriend) {
+        cell2.isFriend = true;
     } else {
         // nothing happened, need no snapshot
         this.undoStack.pop();
