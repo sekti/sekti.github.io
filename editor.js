@@ -117,7 +117,7 @@ function processInput(event) {
         case "r":
             GameState.resetIsland();
             break;
-        case "t":
+        case "T": // only capital T.
             GameState.startFastTravel(true);
             break;
         case "z":

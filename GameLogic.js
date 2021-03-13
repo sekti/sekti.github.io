@@ -255,6 +255,11 @@ GameState.pushRaft = function(raft, dir, playerOnRaft) {
         }
     } while (Raft.canMove(dir));
 
+    if (!Raft.hasTerrainObstacles(dir)) {
+        // I bump stuff that is in the way.
+        // this might bite me in the butt at some point, it could occasionally bump stuff that is too high
+        Raft.getLogObstacles(dir).forEach(log => GameState.bumpLog(log, dir))
+    }
     Raft.logs.forEach(log => GameState.bumpLog(log, dir)); // keep rolling, slide off or something.
     return true;
 }
