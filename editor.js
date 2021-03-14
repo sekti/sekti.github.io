@@ -110,8 +110,20 @@ Editor.confirmNewMap = function() {
     this.closeDialog();
 }
 Editor.changedimensions = function() {
+    $("#editddimx")[0].value = 0;
+    $("#editddimy")[0].value = 0;
     this.openDialog("changedimensions")
-
+}
+Editor.confirmChangeDimensions = function() {
+    let dx = +$("#editddimx")[0].value;
+    let dy = +$("#editddimy")[0].value;
+    let onLeft = $("#ddimxleft")[0].checked;
+    let onTop = $("#ddimytop")[0].checked;
+    TMPLOG(dx, dy, onLeft, onTop);
+    if (dx || dy) {
+        GameState.addSpace(dx, dy, onLeft, onTop);
+    }
+    this.closeDialog();
 }
 Editor.resetall = function() {
     GameState.resetAll();

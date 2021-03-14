@@ -322,17 +322,33 @@ GameState.loadFrom = function(saveGame) {
     View.draw()
 }
 
-GameState.isWater = function(x, y) {
-        let char = GameState.getTerrain(x, y)
-        if (char == ' ') return true;
-        if (char == 'B' || char == 'b') {
-            let numWater = DIRS.map(dir => [x + dir.dx, y + dir.dy]).filter(pair =>
-                GameState.getTerrain(pair[0], pair[1]) == ' ').length;
-            if (numWater >= 3) return true;
+GameState.addSpace = function(dx, dy, onLeft, onTop) {
+    // reset all trees in deleted regions
+    /* if (dx < 0) {
+        let from = onLeft ? 0 : this.dimX - dx;
+        let to = onLeft ? dx : this.dimX;
+        for (let y = 0; y < this.dimY; ++y) {
+            for (let x = from; x < to; ++x) {
+                let cell = this.cells[y][x];
+                cell.logs = [] // all logs in that position are gone
+
+            }
         }
-        return false;
+    }*/
+}
+
+GameState.isWater = function(x, y) {
+    let char = GameState.getTerrain(x, y)
+    if (char == ' ') return true;
+    if (char == 'B' || char == 'b') {
+        let numWater = DIRS.map(dir => [x + dir.dx, y + dir.dy]).filter(pair =>
+            GameState.getTerrain(pair[0], pair[1]) == ' ').length;
+        if (numWater >= 3) return true;
     }
     // default background is grass. This covers trees, post-boxes, rocks, snowmen
+    return false;
+}
+
 GameState.snapshot = function() {
     let snapshot = {}
     this.saveDynamicStateTo(snapshot);
