@@ -3,6 +3,9 @@ originalLevelSave = {
     dimY: 257,
     startX: 165,
     startY: 80,
+    finished: false, // editor tools should be open
+    title: "[original map]",
+    author: "Draknek & Friends",
     map: [
         "                                                                                                                                                                                                                                                                                                                                                     ",
         "                                                                                                                                                                                                                                                                                                                                                     ",

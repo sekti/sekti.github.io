@@ -11,10 +11,12 @@ TERRAIN_CHARS = {
     reset: 'R',
     start: 'M',
 }
-MENU_FUNCTIONS = ["newmap", "changedimensions", "resetall", "editmeta", "toggletools", "about"]
+MENU_FUNCTIONS = ["newmap", "changedimensions", "resetall", "editmeta"]
 
 Editor = {
-    selectedTool: null
+    selectedTool: null,
+    toolsVisible: false,
+    dialogOpen: false,
 }
 Editor.placeTile = function(x, y, tileType) {
     if (tileType == 'M') {
@@ -26,7 +28,7 @@ Editor.placeTile = function(x, y, tileType) {
     }
 }
 Editor.selectTool = function(terrain) {
-    $("#editor-buttons input").removeClass("selected");
+    $("#terrain-buttons input").removeClass("selected");
     if (Editor.selectedTool != TERRAIN_CHARS[terrain] && terrain) {
         $("#button-" + terrain).addClass("selected");
         Editor.selectedTool = TERRAIN_CHARS[terrain];
@@ -48,51 +50,98 @@ Editor.useTool = function(px, py) {
 }
 
 Editor.addControls = function() {
-    /* menuButtons = $("#menu-buttons");
-    button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-save");
-    button.on("click", saveToClipboard)
-    button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-load");
-    button.on("click", loadFromClipboard)*/
+    function makeButton(name, fn) {
+        let pngName = "./img/button-" + name + ".png"
+        let button = $("<input/>").attr("type", "button").attr("id", "button-" + name)
+            .css("background-image", "url(" + pngName + ")");
+        button.on("click", fn);
+        return button;
+    }
 
     // terrain buttons
-    let editorButtons = $("#editor-buttons");
+    let editorButtons = $("#terrain-buttons");
     for (let terrain in TERRAIN_CHARS) {
-        let pngName = "./img/button-" + terrain + ".png"
-        let button = $("<input/>").appendTo(editorButtons).attr("type", "button").attr("id", "button-" + terrain)
-            .css("background-image", "url(" + pngName + ")");
-        button.on("click", event => {
+        makeButton(terrain, event => {
             Editor.selectTool(terrain);
-        });
+        }).appendTo(editorButtons)
     }
     Editor.selectTool(null);
     // menu bottons
     let menuButtons = $("#menu-buttons");
     for (let command of MENU_FUNCTIONS) {
-        let pngName = "./img/button-" + command + ".png"
-        let button = $("<input/>").appendTo(menuButtons).attr("type", "button").attr("id", "button-" + command)
-            .css("background-image", "url(" + pngName + ")");
-        button.on("click", event => {
+        makeButton(command, event => {
             Editor[command]();
-        });
+        }).appendTo(menuButtons)
     }
+    // toggle-menu button
+    makeButton("toggleeditor", event => {
+        Editor.toggleeditor();
+    }).appendTo($("#important-buttons"))
+    makeButton("about", event => {
+        Editor.about();
+    }).appendTo($("#important-buttons"))
+    this.about();
+
+    this.toggleeditor();
+}
+
+Editor.openDialog = function(id) {
+    $("#overlay-container").removeClass("hidden");
+    $("#overlay-container div").addClass("hidden");
+    $("#" + id).removeClass("hidden");
+    this.dialogOpen = true;
+}
+Editor.closeDialog = function() {
+    $("#overlay-container").addClass("hidden");
+    this.dialogOpen = false;
 }
 
 Editor.newmap = function() {
-
+    this.openDialog("newmap")
+}
+Editor.confirmNewMap = function() {
+    let saveGame = {}
+    saveGame.title = "[untitled]"
+    saveGame.author = "[unknown author]"
+    saveGame.dimX = +$("#editdimx")[0].value
+    saveGame.dimY = +$("#editdimy")[0].value
+    saveGame.map = Array(saveGame.dimX).fill(' '.repeat(saveGame.dimY))
+    GameState.loadFrom(saveGame)
+    this.closeDialog();
 }
 Editor.changedimensions = function() {
+    this.openDialog("changedimensions")
 
 }
 Editor.resetall = function() {
-
+    GameState.resetAll();
 }
-Editor.toggletools = function() {
-
+Editor.editmeta = function() {
+    $("#edittitle")[0].value = GameState.title;
+    $("#editauthor")[0].value = GameState.author;
+    $("#finished")[0].checked = GameState.finished;
+    this.openDialog("editmeta")
+}
+Editor.confirmEditMeta = function() {
+    GameState.setTitleAuthorFinished($("#edittitle")[0].value, $("#editauthor")[0].value, $("#finished")[0].checked);
+    this.closeDialog();
+}
+Editor.toggleeditor = function() {
+    this.toolsVisible = !this.toolsVisible;
+    if (!this.toolsVisible) {
+        this.selectTool(null);
+        $("#terrain-buttons").addClass("hidden")
+        $("#menu-buttons").addClass("hidden")
+        $("#button-toggleeditor").removeClass("selected")
+    } else {
+        $("#terrain-buttons").removeClass("hidden")
+        $("#menu-buttons").removeClass("hidden")
+        $("#button-toggleeditor").addClass("selected")
+    }
 }
 Editor.about = function() {
 
 }
-
 
 canvas.onwheel = function(event) {
     event.preventDefault();
@@ -133,6 +182,7 @@ canvas.onclick = function(event) {
 }
 
 function processInput(event) {
+    if (Editor.dialogOpen) return;
     if (event.ctrlKey || event.metaKey || event.altKey) {
         return
     }
@@ -179,8 +229,8 @@ window.onload = function() {
     console.log("Loading default level...")
         //loadFromText(defaultLevelJSON) // '{"map":["          ","   · ···  ","     ·2·  ","   B  ··  ","   ··PR·  ","   ·1···  ","          "],"dimX":10,"dimY":7,"startX":6,"startY":3}'
     updateCanvas(); // loading a save will need to know the canvas size to focus
-    GameState.loadFrom(originalLevelSave);
     Editor.addControls();
+    GameState.loadFrom(originalLevelSave);
     View.draw();
 
     $("body")[0].addEventListener('copy', saveToClipboardData);

@@ -16,6 +16,9 @@ function dirFromDxDy(dx, dy) {
 GameState = {
     dimX: null,
     dimY: null,
+    title: "[untitled]",
+    author: "[author unknown]",
+    finished: false, //hides editor tools when loading
     playerCell: null,
     startCell: null,
     lastDir: null,
@@ -106,8 +109,27 @@ GameState.getTerrain = function(x, y) {
     }
     return null
 }
+GameState.setTitleAuthorFinished = function(title, author, finished) {
+    // adjust display in the top right
+    this.title = title;
+    this.author = author;
+    this.finished = finished;
+    $("#title")[0].textContent = this.title;
+    $("#author")[0].textContent = "by " + this.author;
+}
 GameState.resetAll = function() {
     this.playerCell = this.startCell;
+    this.lastDir = null;
+    this.onIsland = false;
+    for (cellRow of this.cells) {
+        for (cell of cellRow) {
+            cell.logs = []
+            cell.chopped = false;
+            cell.isFriend = false;
+        }
+    }
+    this.focusPlayer()
+    View.draw();
 }
 
 GameState.recallLog = function(origin) {
@@ -199,6 +221,9 @@ GameState.saveMapTo = function(saveGame) {
     saveGame.startX = this.startCell.x;
     saveGame.startY = this.startCell.y;
     saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
+    saveGame.title = this.title;
+    saveGame.author = this.author;
+    saveGame.finished = this.finished;
 
 }
 GameState.saveDynamicStateTo = function(saveGame) {
@@ -237,11 +262,14 @@ GameState.loadMapFrom = function(saveGame) {
     this.dimX = saveGame.dimX;
     this.dimY = saveGame.dimY;
     this.cells = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => new CellState(x, y, saveGame.map[y][x])));
-
     if (saveGame.startX && saveGame.startY) {
         this.startCell = this.cells[saveGame.startY][saveGame.startX]
     } else {
         this.startCell = null
+    }
+    this.setTitleAuthorFinished(saveGame.title, saveGame.author, !!saveGame.finished);
+    if (Editor.toolsVisible == this.finished) {
+        Editor.toggleeditor();
     }
 }
 GameState.loadDynamicStateFrom = function(saveGame) {
@@ -275,7 +303,7 @@ GameState.loadDynamicStateFrom = function(saveGame) {
             this.lastDir = DIRS[saveGame.dir]
         }
     } else {
-        let focusCell = this.startCell || this.cells[(this.dimY - 1) / 2][(this.dimX - 1) / 2]
+        let focusCell = this.startCell || this.cells[Math.floor((this.dimY - 1) / 2)][Math.floor((this.dimX - 1) / 2)]
         let island = GameState.getIsland(focusCell)
         if (island) {
             View.showIsland(island)
@@ -291,7 +319,7 @@ GameState.loadFrom = function(saveGame) {
         this.loadMapFrom(saveGame)
     }
     this.loadDynamicStateFrom(saveGame)
-    this.focusPlayer(true);
+    View.draw()
 }
 
 GameState.isWater = function(x, y) {
@@ -345,5 +373,4 @@ function loadFromText(text) {
         return
     }
     GameState.loadFrom(saveGame)
-    View.draw()
 }
