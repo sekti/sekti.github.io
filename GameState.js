@@ -132,8 +132,13 @@ GameState.resetAll = function() {
     View.draw();
 }
 
+GameState.clearCell = function(cell) {
+    while (cell.logs.length) {
+        let log = cell.logs[0]
+        this.recallLog(log.origin)
+    }
+}
 GameState.recallLog = function(origin) {
-    origin.logs = [] // remove all logs in that cell
     for (cellRow of this.cells) {
         for (cell of cellRow) {
             for (log of cell.logs) {
@@ -156,6 +161,12 @@ GameState.recallLog = function(origin) {
         }
     }
     origin.chopped = false;
+    /* recall the logs that are still lying in that cell
+     * the original game only removes them, but this means
+     * there can be chopped trees that do not have their logs anywhere
+     * in the world. My savegame format currently assumes this does not occur
+     * so I simply reset logs on stumps that are resetting as well. */
+    this.clearCell(origin)
 }
 const FAST_TRAVEL = 1;
 const CHEAT_TRAVEL = 2;
@@ -218,12 +229,14 @@ GameState.saveMapTo = function(saveGame) {
     // static part of the save
     saveGame.dimX = this.dimX;
     saveGame.dimY = this.dimY;
-    saveGame.startX = this.startCell.x;
-    saveGame.startY = this.startCell.y;
-    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
     saveGame.title = this.title;
     saveGame.author = this.author;
     saveGame.finished = this.finished;
+    if (this.startCell) {
+        saveGame.startX = this.startCell.x;
+        saveGame.startY = this.startCell.y;
+    }
+    saveGame.map = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => this.cells[y][x].terrain).join(''))
 
 }
 GameState.saveDynamicStateTo = function(saveGame) {
@@ -323,18 +336,63 @@ GameState.loadFrom = function(saveGame) {
 }
 
 GameState.addSpace = function(dx, dy, onLeft, onTop) {
+    function clean(x, y) {
+        let cell = GameState.cells[y][x];
+        if (cell.chopped) {
+            // recall logs that come from here
+            this.recallLog(cell);
+        }
+        // and put back logs that happen to be here.
+        GameState.clearCell(cell);
+    }
     // reset all trees in deleted regions
-    /* if (dx < 0) {
-        let from = onLeft ? 0 : this.dimX - dx;
-        let to = onLeft ? dx : this.dimX;
+    dx = Math.max(dx, -this.dimX + 1); // must keep at least one cell
+    dy = Math.max(dy, -this.dimY + 1);
+    if (dx < 0) {
+        let from = onLeft ? 0 : this.dimX + dx;
+        let to = onLeft ? -dx : this.dimX;
         for (let y = 0; y < this.dimY; ++y) {
             for (let x = from; x < to; ++x) {
-                let cell = this.cells[y][x];
-                cell.logs = [] // all logs in that position are gone
-
+                clean(x, y);
             }
         }
-    }*/
+    }
+    if (dy < 0) {
+        let from = onTop ? 0 : this.dimY + dy;
+        let to = onTop ? -dy : this.dimY;
+        for (let y = from; y < to; ++y) {
+            for (let x = 0; x < this.dimX; ++x) {
+                clean(x, y);
+                TMPLOG("clean", x, y)
+            }
+        }
+    }
+    // create new ocean
+    let playerOK = false
+    let startOK = false
+    let newDimX = this.dimX + dx;
+    let newDimY = this.dimY + dy;
+    let newCells = [...Array(newDimY).keys()].map(y => [...Array(newDimX).keys()].map(x => new CellState(x, y, ' ')));
+    let shiftX = onLeft ? dx : 0;
+    let shiftY = onTop ? dy : 0;
+    for (let y = Math.max(0, -shiftY); y < Math.min(this.dimY, newDimY - shiftY); ++y) {
+        for (let x = Math.max(0, -shiftX); x < Math.min(this.dimX, newDimX - shiftX); ++x) {
+            let cell = this.cells[y][x];
+            cell.x += shiftX;
+            cell.y += shiftY;
+            newCells[y + shiftY][x + shiftX] = cell;
+            if (cell == this.playerCell) { playerOK = true; }
+            if (cell == this.startCell) { startOK = true; }
+        }
+    }
+    this.cells = newCells;
+    this.dimX = this.dimX + dx;
+    this.dimY = this.dimY + dy;
+    if (!startOK) { this.startCell = null; }
+    if (!playerOK) { this.playerCell = this.startCell; }
+    undoStack = []
+    View.draw();
+    TMPLOG("done")
 }
 
 GameState.isWater = function(x, y) {

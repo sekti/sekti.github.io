@@ -289,6 +289,7 @@ GameState.tryPushFloat = function(cell, dir) {
 }
 
 GameState.focusPlayer = function(refocus = false) {
+    if (!this.playerCell) return;
     let island = this.getIsland(this.playerCell);
     let isGood = !refocus && View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
     if (island && (!this.onIsland || !isGood)) {

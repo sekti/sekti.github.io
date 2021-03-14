@@ -80,14 +80,13 @@ Editor.addControls = function() {
     makeButton("about", event => {
         Editor.about();
     }).appendTo($("#important-buttons"))
-    this.about();
 
     this.toggleeditor();
 }
 
 Editor.openDialog = function(id) {
     $("#overlay-container").removeClass("hidden");
-    $("#overlay-container div").addClass("hidden");
+    $("#overlay-container > div").addClass("hidden");
     $("#" + id).removeClass("hidden");
     this.dialogOpen = true;
 }
@@ -138,6 +137,11 @@ Editor.confirmEditMeta = function() {
     GameState.setTitleAuthorFinished($("#edittitle")[0].value, $("#editauthor")[0].value, $("#finished")[0].checked);
     this.closeDialog();
 }
+
+Editor.about = function() {
+    this.openDialog("about")
+}
+
 Editor.toggleeditor = function() {
     this.toolsVisible = !this.toolsVisible;
     if (!this.toolsVisible) {
@@ -150,9 +154,6 @@ Editor.toggleeditor = function() {
         $("#menu-buttons").removeClass("hidden")
         $("#button-toggleeditor").addClass("selected")
     }
-}
-Editor.about = function() {
-
 }
 
 canvas.onwheel = function(event) {
@@ -248,4 +249,6 @@ window.onload = function() {
     $("body")[0].addEventListener('copy', saveToClipboardData);
     $("body")[0].addEventListener('paste', loadFromClipboardData);
     $("body")[0].addEventListener('keydown', processInput);
+
+    Editor.about();
 }
