@@ -11,7 +11,25 @@ TERRAIN_CHARS = {
     reset: 'R',
     start: 'M',
 }
-MENU_FUNCTIONS = ["newmap", "changedimensions", "resetall", "editmeta"]
+TERRAIN_TOOLTIPS = {
+    pan: "[pan]",
+    water: 'water',
+    grass: 'grass',
+    tree: 'tree',
+    talltree: 'tall tree',
+    rock: 'small boulder',
+    boulder: 'tall boulder',
+    postbox: 'post box',
+    secret: 'friend',
+    reset: 'island\'s reset position',
+    start: 'map\'s start position',
+}
+MENU_FUNCTIONS = {
+    newmap: "create a new map of water tiles",
+    changedimensions: "extend or shrink the map",
+    resetall: "reset all islands and the player",
+    editmeta: "edit map title and author",
+}
 
 Editor = {
     selectedTool: null,
@@ -50,9 +68,9 @@ Editor.useTool = function(px, py) {
 }
 
 Editor.addControls = function() {
-    function makeButton(name, fn) {
+    function makeButton(name, fn, tooltip) {
         let pngName = "./img/button-" + name + ".png"
-        let button = $("<input/>").attr("type", "button").attr("id", "button-" + name)
+        let button = $("<input/>").attr("type", "button").attr("id", "button-" + name).attr("title", tooltip)
             .css("background-image", "url(" + pngName + ")");
         button.on("click", fn);
         return button;
@@ -63,23 +81,23 @@ Editor.addControls = function() {
     for (let terrain in TERRAIN_CHARS) {
         makeButton(terrain, event => {
             Editor.selectTool(terrain);
-        }).appendTo(editorButtons)
+        }, TERRAIN_TOOLTIPS[terrain]).appendTo(editorButtons)
     }
     Editor.selectTool(null);
     // menu bottons
     let menuButtons = $("#menu-buttons");
-    for (let command of MENU_FUNCTIONS) {
+    for (let command in MENU_FUNCTIONS) {
         makeButton(command, event => {
             Editor[command]();
-        }).appendTo(menuButtons)
+        }, MENU_FUNCTIONS[command]).appendTo(menuButtons)
     }
     // toggle-menu button
     makeButton("toggleeditor", event => {
         Editor.toggleeditor();
-    }).appendTo($("#important-buttons"))
+    }, "show/hide editor buttons").appendTo($("#important-buttons"))
     makeButton("about", event => {
         Editor.about();
-    }).appendTo($("#important-buttons"))
+    }, "help/about").appendTo($("#important-buttons"))
 
     this.toggleeditor();
 }
@@ -249,6 +267,4 @@ window.onload = function() {
     $("body")[0].addEventListener('copy', saveToClipboardData);
     $("body")[0].addEventListener('paste', loadFromClipboardData);
     $("body")[0].addEventListener('keydown', processInput);
-
-    Editor.about();
 }
