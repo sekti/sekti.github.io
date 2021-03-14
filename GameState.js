@@ -179,6 +179,7 @@ GameState.endFastTravel = function(x, y) {
     if (cell) {
         if (this.fastTraveling == FAST_TRAVEL && cell.terrain != 'P') {
             console.log("Cannot fast-travel to cell of type ", cell.terrain)
+            postMessage("Click on a post-box to fast-travel.")
             return;
         }
         this.snapshot() // for undo
@@ -189,7 +190,7 @@ GameState.endFastTravel = function(x, y) {
 GameState.resetIsland = function() {
     let island = this.getIsland(this.playerCell)
     if (!island) {
-        console.log("Refusing reset because player is not on an island.")
+        postMessage("Refusing reset because player is not on an island.", 1)
         return;
     }
     let resetCell
@@ -213,7 +214,7 @@ GameState.resetIsland = function() {
     if (resetCell) {
         this.playerCell = resetCell
     } else if (this.playerCell.terrain == '1' || this.playerCell.terrain == '2') {
-        console.log("Refusing reset because no reset pos found and player is on stump.")
+        postMessage("Refusing reset because no reset position found and player is on stump.", 1)
         return
     }
     console.log("Resetting Island.")
@@ -414,7 +415,7 @@ GameState.snapshot = function() {
 }
 GameState.undo = function() {
     if (!this.undoStack.length) {
-        console.log("Undo stack is empty.")
+        postMessage("Undo stack is empty.", true);
         return
     }
     let snapshot = this.undoStack.pop()
@@ -429,7 +430,7 @@ function saveToClipboardData(event) {
     let string = JSON.stringify(saveGame).replace(/"map":\[/, '"map":[\n').replace(/"\,/g, '",\n').replace(/"\]/, '"]\n')
     event.clipboardData.setData('text/plain', string)
     event.preventDefault();
-    console.log("Saved Map and GameState to Clipboard.")
+    postMessage("Saved Map and GameState to Clipboard ✓")
 }
 
 function loadFromClipboardData(event) {
@@ -444,6 +445,10 @@ function loadFromText(text) {
         console.log("SUCCESS!")
     } catch (error) {
         console.log("... but this is not valid JSON:\n", text)
+        if (text.length > 50) {
+            text = text.slice(0, 30) + "..." + text.slice(-20);
+        }
+        postMessage("Invalid Level: “" + text + "”", 1)
         return
     }
     GameState.loadFrom(saveGame)

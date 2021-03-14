@@ -152,6 +152,10 @@
             text-align: left;
         }
         
+        #about>h2 {
+            margin-top: 30px;
+        }
+        
         span.keystroke {
             font-weight: bold;
         }
@@ -184,6 +188,32 @@
         
         table.form tr>td:first-child {
             text-align: right;
+        }
+        
+        #message-pane-container {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            top: 50px;
+            pointer-events: none;
+        }
+        
+        #message-pane {
+            font-size: 20px;
+            justify-content: center;
+            padding: 10px;
+            border: 2px solid #000000;
+            z-index: 1;
+            background-color: green;
+        }
+        
+        #message-pane.posted {
+            opacity: 0;
+            transition: opacity 3s ease-in-out;
+        }
+        
+        #message-pane.error {
+            background-color: red;
         }
     </style>
 </head>
@@ -273,7 +303,7 @@
                 <a href="https://www.monsterexpedition.com/">monsterexpedition.com</a>
             </p>
             <h2>Loading and Saving Levels</h2>
-            <p>Levels are distributed as long JSON strings that look like this: <br> {dimX: 341,dimY: 257,<span style="color:#666666">... lots and lots of data ... </span>}<br> They are loaded from and saved to your clipboard.
+            <p>Levels are distributed as long JSON strings that look like this: <br> {dimX: 341,dimY: 257,<i>... lots and lots of data ... </i>}<br> They are loaded from and saved to your clipboard.
             </p>
             <table>
                 <tr>
@@ -301,6 +331,7 @@
                     <td><img src="./img/button-reset.png"></td>
                     <td>
                         <span class="keystroke">R</span> to reset island.
+                        <!--<i>(Note: Does not work when standing on a raft; does not work on stumps when no reset position is defined)</i>-- ← I post corresponding error message now -->
                     </td>
                 </tr>
                 <tr>
@@ -361,12 +392,6 @@
                     </td>
                 </tr>
                 <tr>
-                    <td><img src="./img/button-toggleeditor.png"></td>
-                    <td>
-                        Button: Show/hide editor tools.
-                    </td>
-                </tr>
-                <tr>
                     <td><img src="./img/button-newmap.png"></td>
                     <td>
                         Button: Create new level filled with water tiles.
@@ -384,9 +409,26 @@
                         Button: Reset all islands (and friends).
                     </td>
                 </tr>
+                <tr>
+                    <td><img src="./img/button-toggleeditor.png"></td>
+                    <td>
+                        Button: Show/hide editor tools.
+                    </td>
+                </tr>
+                <tr>
+                    <td><img src="./img/button-about.png"></td>
+                    <td>
+                        Button: Show this help text.
+                    </td>
+                </tr>
             </table>
-            <p>Have fun creating levels and make sure you post them so I can play them! I really feel that the mechanics of A Monster's Expedition offer a lot of variants that have yet to be explored!
+            <p>Have fun creating levels and make sure you post them so I can play them! I really feel that the mechanics of A Monster's Expedition offer a lot of depth that is yet to be explored!
             </p>
+        </div>
+    </div>
+    <div id="message-pane-container">
+        <div id="message-pane" class="posted">
+            Loading...
         </div>
     </div>
     <div id="buttons">

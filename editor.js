@@ -212,6 +212,15 @@ canvas.onclick = function(event) {
     }
 }
 
+function postMessage(msg, isError = false) {
+    let pane = $("#message-pane")
+    pane.removeClass("posted")
+    pane.text(msg);
+    void pane[0].offsetWidth; // needed magic to restart the css animation
+    pane.addClass("posted") // will fade
+    isError ? pane.addClass("error") : pane.removeClass("error")
+}
+
 function processInput(event) {
     if (Editor.dialogOpen) return;
     if (event.ctrlKey || event.metaKey || event.altKey) {
