@@ -1,221 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <title>A Monster's Editor</title>
-    <meta charset="utf-8" />
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-    <!--<link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Akaya+Telivigala&display=swap" rel="stylesheet">-->
-    <style type="text/css">
-        html,
-        body {
-            margin: 0;
-            height: 100%;
-            /* font-family: 'Akaya Telivigala', cursive;*/
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        h3 {
-            text-align: center;
-            font-size: 50px;
-            margin: 15px;
-        }
-        
-        canvas {
-            position: absolute;
-            /* border: 1px solid black;*/
-            padding: 0pt;
-            margin: 0pt;
-            min-height: 100px;
-            min-width: 100px;
-            width: 100%;
-            height: 100%;
-            justify-content: center;
-        }
-        
-        td>img {
-            width: 2.5em;
-            margin-right: 0.5em;
-        }
-        
-        #content {
-            display: flex;
-            flex-flow: column;
-            flex: 1 1 100%;
-        }
-        
-        #title-author {
-            text-shadow: 0px 0px 13px #FFFFFF, 0px 0px 13px #FFFFFF;
-            /* two shadows →d brighter */
-            font-variant: small-caps;
-            width: 100%;
-            pointer-events: none;
-        }
-        
-        #title-author {
-            text-align: right;
-            font-size: 40px;
-            position: absolute;
-            right: 10px;
-            top: 10px;
-        }
-        
-        #author {
-            font-size: 70%;
-        }
-        
-        #buttons div {
-            display: flex;
-            position: absolute;
-            pointer-events: none;
-        }
-        
-        #menu-buttons {
-            flex-direction: column;
-            bottom: 250px;
-            top: 20px;
-            left: 10px;
-        }
-        
-        #terrain-buttons {
-            bottom: 10px;
-            flex-wrap: wrap-reverse;
-            left: 130px;
-            right: 10px;
-            flex-direction: row;
-            justify-content: center;
-        }
-        
-        #important-buttons {
-            flex-direction: column;
-            bottom: 10px;
-            left: 10px;
-        }
-        
-        #buttons input {
-            border-radius: 15px;
-            /*border: 5px solid #888888;*/
-            background-color: #cccccc;
-            background-size: contain;
-            cursor: pointer;
-            margin: 2pt;
-            width: 80pt;
-            height: 80pt;
-            pointer-events: all;
-            box-shadow: 2px 2px 6px 3px #333333;
-        }
-        
-        #buttons input.selected {
-            box-sizing: border-box;
-            background-color: #ffbbbb;
-            border: 5px solid #ff0000;
-            border-radius: 3mm;
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        #overlay-container {
-            font-size: 25px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            text-align: center;
-        }
-        
-        #overlay-container h2 {
-            font-size: 150%;
-            margin: 10px;
-        }
-        
-        #overlay-container>div {
-            position: relative;
-            background-color: #cccccc;
-            /*border: 5px solid #333333;*/
-            box-shadow: 4px 4px 6px 3px #333333;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 35em;
-            max-height: calc(100% - 250px);
-            overflow: auto;
-            margin-bottom: 130px;
-            margin-left: 130px;
-        }
-        
-        #about {
-            text-align: left;
-        }
-        
-        #about>h2 {
-            margin-top: 30px;
-        }
-        
-        span.keystroke {
-            font-weight: bold;
-        }
-        
-        #overlay-container p {
-            margin: 10px;
-        }
-        
-        #overlay-container input[type=text] {
-            width: 20em;
-            font-size: 25px;
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        #overlay-container input[type=button] {
-            font-size: 25px;
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        #overlay-container input[type=number] {
-            font-size: 25px;
-            width: 3em;
-            text-align: right;
-            font-family: 'Roboto', sans-serif;
-        }
-        
-        table.form tr>td {
-            text-align: left;
-        }
-        
-        table.form tr>td:first-child {
-            text-align: right;
-        }
-        
-        #message-pane-container {
-            display: flex;
-            justify-content: center;
-            position: relative;
-            top: 50px;
-            pointer-events: none;
-        }
-        
-        #message-pane {
-            font-size: 20px;
-            justify-content: center;
-            padding: 10px;
-            border: 2px solid #000000;
-            z-index: 1;
-            background-color: green;
-        }
-        
-        #message-pane.posted {
-            opacity: 0;
-            transition: opacity 3s ease-in-out;
-        }
-        
-        #message-pane.error {
-            background-color: red;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -237,7 +28,7 @@
                     <td><input type="text" id="editauthor" /></td>
                 </tr>
             </table>
-            <p><input type="checkbox" id="finished" /> finished (hides editor tools when loading)</p>
+            <p><label><input type="checkbox" id="finished" /> finished (hides editor tools when loading)</label></p>
             <p>
                 <input type="button" value="CANCEL" onclick='Editor.closeDialog();' />
                 <input type="button" value="OK" onclick='Editor.confirmEditMeta();' />
@@ -268,24 +59,20 @@
                     <td>extra width:</td>
                     <td><input type="number" id="editddimx" value="0" min="-1000" max="1000" /></td>
                     <td>
-                        <input type="radio" id="ddimxleft" name="ddimx" />
-                        <label for="ddimxleft">left</label>
+                        <label><input type="radio" id="ddimxleft" name="ddimx" />left</label>
                     </td>
                     <td>
-                        <input type="radio" id="ddimxright" name="ddimx" checked />
-                        <label for="ddimxright">right</label>
+                        <label><input type="radio" id="ddimxright" name="ddimx" checked />right</label>
                     </td>
                 </tr>
                 <tr>
                     <td>extra height:</td>
                     <td><input type="number" id="editddimy" value="0" min="-1000" max="1000" /></td>
                     <td>
-                        <input type="radio" id="ddimytop" name="ddimy" />
-                        <label for="ddimxtop">top</label>
+                        <label><input type="radio" id="ddimytop" name="ddimy" />top</label>
                     </td>
                     <td>
-                        <input type="radio" id="ddimybottom" name="ddimy" checked />
-                        <label for="ddimxbottom">bottom</label>
+                        <label><input type="radio" id="ddimybottom" name="ddimy" checked />bottom</label>
                     </td>
                 </tr>
             </table>
@@ -298,7 +85,7 @@
             <div style="position:sticky;z-index:3;text-align:right;height:0;top:0">
                 <input type="button" value="CLOSE" onclick='Editor.closeDialog();' />
             </div>
-            <h3>A Monster's Editor</h3>
+            <h3>a Monster's Editor</h3>
             <p>Unofficial level editor created by Stefan “Sekti” Walzer for <strong>A Monster's Expedition</strong> by <strong>Draknek & Friends</strong>, see
                 <a href="https://www.monsterexpedition.com/">monsterexpedition.com</a>
             </p>
@@ -406,7 +193,7 @@
                 <tr>
                     <td><img src="./img/icon-undo.png"></td>
                     <td>
-                        Press <span class="keystroke">Z</span> to undo.
+                        Press <span class="keystroke">Shift + Z</span> to undo the last change to the map. If Monster has not moved since the last change then <span class="keystroke">Z</span> also works.
                     </td>
                 </tr>
                 <tr>
@@ -440,8 +227,8 @@
                     </td>
                 </tr>
             </table>
-            <p>Have fun creating levels and make sure you post them so I can play them! I really feel that the mechanics of A Monster's Expedition offer a lot of depth that is yet to be explored!
-            </p>
+            <!-- <p>Have fun creating levels and make sure you post them so I can play them! I really feel that the mechanics of A Monster's Expedition offer a lot of depth that is yet to be explored!
+            </p>-->
         </div>
     </div>
     <div id="message-pane-container">

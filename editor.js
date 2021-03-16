@@ -361,6 +361,9 @@ function processInput(event) {
         case "T": // only capital T.
             GameState.startFastTravel(true);
             break;
+        case "Z":
+            GameState.undo(true);
+            break;
         case "z":
             GameState.undo();
             break;
@@ -378,8 +381,8 @@ window.onload = function() {
         //loadFromText(defaultLevelJSON) // '{"map":["          ","   · ···  ","     ·2·  ","   B  ··  ","   ··PR·  ","   ·1···  ","          "],"dimX":10,"dimY":7,"startX":6,"startY":3}'
     updateCanvas(); // loading a save will need to know the canvas size to focus
     Editor.addControls();
+    View.makeTiles();
     GameState.loadFrom(originalLevelSave);
-    View.draw();
 
     $("body")[0].addEventListener('copy', saveToClipboardData);
     $("body")[0].addEventListener('paste', loadFromClipboardData);

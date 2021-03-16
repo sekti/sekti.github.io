@@ -459,13 +459,25 @@ GameState.snapshot = function(saveMap) {
     this.saveDynamicStateTo(snapshot);
     this.undoStack.push(snapshot)
 }
-GameState.undo = function() {
-    if (!this.undoStack.length) {
+GameState.undo = function(static) {
+    if (!this.undoStack.length || static && !this.undoStack.some(s => s.map)) {
         postMessage("Undo history is empty.", true);
         return
     }
     let snapshot = this.undoStack.pop()
-    this.loadFrom(snapshot)
+    while (static && !snapshot.map) {
+        snapshot = this.undoStack.pop()
+    }
+
+    if (snapshot.map) {
+        // was a change to the map: want to keep the view
+        let view = View.getView();
+        this.loadFrom(snapshot)
+        View.setView(view);
+    } else {
+        // player moved, center him
+        this.loadFrom(snapshot)
+    }
     View.draw()
 }
 

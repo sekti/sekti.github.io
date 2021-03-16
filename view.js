@@ -24,41 +24,7 @@ class Tile {
         this.sHeight = this.image.height;
     }
 }
-TILESET = {
-    GRASS: new Tile("background-tiles", 128, 0),
-    GRASS2: new Tile("background-tiles", 128, 1),
-    WATER: new Tile("background-tiles", 128, 2),
-    SELECTION: new Tile("background-tiles", 128, 3),
-    DRAGGING: new Tile("background-tiles", 128, 4),
-    TREE: new Tile("props", 256, 0),
-    TALLTREE: new Tile("props", 256, 1),
-    POSTBOX: new Tile("props", 256, 2),
-    STUMP: new Tile("props", 256, 3),
-    ROCK: new Tile("props", 256, 4),
-    BOULDER: new Tile("props", 256, 5),
-    SNOWMAN: new Tile("props", 256, 6),
-    FRIEND: new Tile("props", 256, 7),
-    LOG_STANDING: new Tile("props", 256, 8),
-    LOG_HORIZONTAL: new Tile("props", 256, 9),
-    LOG_VERTICAL: new Tile("props", 256, 10),
-    LOG2_STANDING: new Tile("props", 256, 11),
-    LOG2_HORIZONTAL_LEFT: new Tile("props", 256, 12),
-    LOG2_HORIZONTAL_RIGHT: new Tile("props", 256, 13),
-    LOG2_VERTICAL_BOTTOM: new Tile("props", 256, 14),
-    LOG2_VERTICAL_TOP: new Tile("props", 256, 15),
-    MONSTER_RIGHT: new Tile("props", 256, 16),
-    MONSTER_LEFT: new Tile("props", 256, 17),
-    MONSTER_DOWN: new Tile("props", 256, 18),
-    MONSTER_UP: new Tile("props", 256, 19),
-    START: new Tile("props", 256, 20),
-    RESETPOS: new Tile("props", 256, 21),
-    RAFT_VERTICAL: new Tile("props", 256, 22),
-    RAFT_HORIZONTAL: new Tile("props", 256, 23),
-    RAFT2_HORIZONTAL_RIGHT: new Tile("props", 256, 24),
-    RAFT2_HORIZONTAL_LEFT: new Tile("props", 256, 25),
-    RAFT2_VERTICAL_BOTTOM: new Tile("props", 256, 26),
-    RAFT2_VERTICAL_TOP: new Tile("props", 256, 27),
-}
+let TILESET
 
 View = {
     // position that the camera is looking at;
@@ -72,6 +38,52 @@ View = {
     lastPanY: -1,
     showGrid: false,
 };
+View.makeTiles = function() {
+    // must be called after site is loaded (because it needs the images)
+    TILESET = {
+        GRASS: new Tile("background-tiles", 128, 0),
+        GRASS2: new Tile("background-tiles", 128, 1),
+        WATER: new Tile("background-tiles", 128, 2),
+        SELECTION: new Tile("background-tiles", 128, 3),
+        DRAGGING: new Tile("background-tiles", 128, 4),
+        TREE: new Tile("props", 256, 0),
+        TALLTREE: new Tile("props", 256, 1),
+        POSTBOX: new Tile("props", 256, 2),
+        STUMP: new Tile("props", 256, 3),
+        ROCK: new Tile("props", 256, 4),
+        BOULDER: new Tile("props", 256, 5),
+        SNOWMAN: new Tile("props", 256, 6),
+        FRIEND: new Tile("props", 256, 7),
+        LOG_STANDING: new Tile("props", 256, 8),
+        LOG_HORIZONTAL: new Tile("props", 256, 9),
+        LOG_VERTICAL: new Tile("props", 256, 10),
+        LOG2_STANDING: new Tile("props", 256, 11),
+        LOG2_HORIZONTAL_LEFT: new Tile("props", 256, 12),
+        LOG2_HORIZONTAL_RIGHT: new Tile("props", 256, 13),
+        LOG2_VERTICAL_BOTTOM: new Tile("props", 256, 14),
+        LOG2_VERTICAL_TOP: new Tile("props", 256, 15),
+        MONSTER_RIGHT: new Tile("props", 256, 16),
+        MONSTER_LEFT: new Tile("props", 256, 17),
+        MONSTER_DOWN: new Tile("props", 256, 18),
+        MONSTER_UP: new Tile("props", 256, 19),
+        START: new Tile("props", 256, 20),
+        RESETPOS: new Tile("props", 256, 21),
+        RAFT_VERTICAL: new Tile("props", 256, 22),
+        RAFT_HORIZONTAL: new Tile("props", 256, 23),
+        RAFT2_HORIZONTAL_RIGHT: new Tile("props", 256, 24),
+        RAFT2_HORIZONTAL_LEFT: new Tile("props", 256, 25),
+        RAFT2_VERTICAL_BOTTOM: new Tile("props", 256, 26),
+        RAFT2_VERTICAL_TOP: new Tile("props", 256, 27),
+    }
+}
+View.getView = function() {
+    return { cx: this.cx, cy: this.cy, pxPerTile: this.pxPerTile }
+}
+View.setView = function(view) {
+    this.cx = view.cx;
+    this.cy = view.cy;
+    this.pxPerTile = view.pxPerTile;
+}
 View.xToCanvasX = function(x) {
     return canvas.width / 2 + (x - this.cx) * this.pxPerTile;
 }
@@ -233,7 +245,8 @@ View.drawStaticProps = function(x, y) {
 }
 
 View.draw = function() {
-    // in case of resize
+    TMPLOG("draw")
+        // in case of resize
     updateCanvas();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.rect(0, 0, canvas.width, canvas.height);
@@ -264,7 +277,7 @@ View.draw = function() {
     }
 }
 
-window.addEventListener("resize", _ => View.draw());
+//window.addEventListener("resize", _ => View.draw());
 
 View.zoom = function(dir) {
     if (dir) {
