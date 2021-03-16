@@ -37,7 +37,7 @@ Editor = {
     selectedTool: "pan",
     toolsVisible: false,
     dialogOpen: false,
-    dragDropCells: null,
+    dragDropCells: [],
     dragDropRect: null,
     dragDropStart: null,
     dragDropEnd: null,
@@ -52,6 +52,10 @@ Editor.placeTile = function(x, y, tileType) {
     }
 }
 Editor.selectTool = function(tool) {
+    if (this.dragDropCells.length) {
+        this.dragDropCells = []
+        View.draw();
+    }
     $("#terrain-buttons input").removeClass("selected");
     if (this.selectedTool != tool) {
         $("#button-" + tool).addClass("selected");
