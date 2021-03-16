@@ -107,7 +107,7 @@
             box-shadow: 2px 2px 6px 3px #333333;
         }
         
-        input.selected {
+        #buttons input.selected {
             box-sizing: border-box;
             background-color: #ffbbbb;
             border: 5px solid #ff0000;
@@ -337,7 +337,7 @@
                 <tr>
                     <td><img src="./img/icon-undo.png"></td>
                     <td>
-                        <span class="keystroke">Z</span> or <span>Backspace</span> to undo.
+                        <span class="keystroke">Z</span> to undo.
                     </td>
                 </tr>
                 <tr>
@@ -368,15 +368,27 @@
             <h2>Editor Usage</h2>
             <table>
                 <tr>
+                    <td><img src="./img/button-tree.png"></td>
+                    <td>
+                        Terrain Buttons: Select a type tile (grass, water, tree, ...).
+                    </td>
+                </tr>
+                <tr>
                     <td><img src="./img/icon-mouse.png"></td>
                     <td>
-                        <span>Left-click</span> to place selected terrain.
+                        <span>Left-click</span> to place selected tiles in the map.
                     </td>
                 </tr>
                 <tr>
                     <td><img src="./img/button-pan.png"></td>
                     <td>
-                        <span>Middle mouse button</span> to pan (even when terrain is selected).
+                        You can <i>always</i> pan using the <span class="keystroke">Middle mouse button</span>.<br> When this tool is selected, you can also pan with <span class="keystroke">Left-click</span>.
+                    </td>
+                </tr>
+                <tr>
+                    <td><img src="./img/button-dragdrop.png"></td>
+                    <td>
+                        Drag and drop tool: Draw a rectangle to select non-water tiles. Then drag and drop selected tiles to a different position.
                     </td>
                 </tr>
                 <tr>
@@ -392,6 +404,12 @@
                     </td>
                 </tr>
                 <tr>
+                    <td><img src="./img/icon-undo.png"></td>
+                    <td>
+                        Press <span class="keystroke">Z</span> to undo.
+                    </td>
+                </tr>
+                <tr>
                     <td><img src="./img/button-newmap.png"></td>
                     <td>
                         Button: Create new level filled with water tiles.
@@ -400,7 +418,7 @@
                 <tr>
                     <td><img src="./img/button-changedimensions.png"></td>
                     <td>
-                        Button: Enlarge or shrink the Level.
+                        Button: Enlarge or shrink the level.
                     </td>
                 </tr>
                 <tr>

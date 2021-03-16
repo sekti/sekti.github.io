@@ -81,34 +81,80 @@ GameState.getIsland = function(root, rocksAreSeparators = false) {
     return island.size ? island : null;
 }
 
-GameState.setTerrain = function(x, y, char) {
+GameState.setTerrain = function(x, y, char, snapshot = true) {
     let cell = this.cells[y][x]
+
+    if (snapshot && cell.terrain != char || cell.chopped || cell.isFriend) {
+        // somewhat costly, code should not run if nothing changes
+        this.snapshot(true);
+    }
+
     if (char == 'R') {
         /* reset position, only one can exist per island */
-        this.setTerrain(x, y, '·'); // make grass
+        this.setTerrain(x, y, '·', false); // make grass
         let island = this.getIsland(cell, true);
         for (let cell2 of island) {
             if (cell2.terrain == 'R') {
-                this.setTerrain(cell2.x, cell2.y, '·')
+                this.setTerrain(cell2.x, cell2.y, '·', false)
             }
         }
     }
     // todo: clear tile
     if (cell.chopped) {
         this.recallLog(cell)
-        this.undoStack = [] // bad things could happen
     }
     if (cell.isFriend) {
         cell.isFriend = false;
     }
     cell.terrain = char
 }
-GameState.getTerrain = function(x, y) {
+GameState.getCell = function(x, y) {
     if (x >= 0 && y >= 0 && y < GameState.dimY && x < GameState.dimX) {
-        return this.cells[y][x].terrain;
+        return this.cells[y][x];
     }
     return null
 }
+GameState.getTerrain = function(x, y) {
+    let cell = this.getCell(x, y)
+    return cell && cell.terrain;
+}
+GameState.moveCells = function(positions, dx, dy) {
+    if (!dx && !dy) { return; }
+    this.snapshot(true);
+    let terrains = []
+    let movedStart = false;
+    let movedPlayer = false;
+    for (let pos of positions) {
+        let cell = this.getCell(pos.x, pos.y)
+        if (!movedStart && cell == this.startCell) {
+            this.startCell = this.getCell(pos.x + dx, pos.y + dy);
+            movedStart = true;
+        }
+        if (!movedPlayer && cell == this.playerCell) {
+            this.playerCell = this.getCell(pos.x + dx, pos.y + dy);
+            movedPlayer = true;
+        }
+        if (cell) {
+            this.clearCell(cell); // remove logs and reset trees
+            terrains.push(cell.terrain);
+            this.setTerrain(cell.x, cell.y, ' ', false); // moved cells leave behind water
+        } else {
+            terrains.push(' '); // water
+        }
+    }
+    for (let pos of positions) {
+        pos.x += dx;
+        pos.y += dy;
+        let cell = this.getCell(pos.x, pos.y)
+        if (cell) {
+            this.clearCell(cell); // remove logs and reset trees
+            this.setTerrain(cell.x, cell.y, terrains.shift(), false) // O(n) but who cares.
+        } else {
+            terrains.shift();
+        }
+    }
+}
+
 GameState.setTitleAuthorFinished = function(title, author, finished) {
     // adjust display in the top right
     this.title = title;
@@ -118,6 +164,7 @@ GameState.setTitleAuthorFinished = function(title, author, finished) {
     $("#author")[0].textContent = "by " + this.author;
 }
 GameState.resetAll = function() {
+    this.snapshot();
     this.playerCell = this.startCell;
     this.lastDir = null;
     this.onIsland = false;
@@ -136,6 +183,9 @@ GameState.clearCell = function(cell) {
     while (cell.logs.length) {
         let log = cell.logs[0]
         this.recallLog(log.origin)
+    }
+    if (cell.chopped) {
+        this.recallLog(cell)
     }
 }
 GameState.recallLog = function(origin) {
@@ -337,13 +387,11 @@ GameState.loadFrom = function(saveGame) {
 }
 
 GameState.addSpace = function(dx, dy, onLeft, onTop) {
+    this.snapshot(true);
+
     function clean(x, y) {
         let cell = GameState.cells[y][x];
-        if (cell.chopped) {
-            // recall logs that come from here
-            this.recallLog(cell);
-        }
-        // and put back logs that happen to be here.
+        // recall logs that come from here and put back logs that happen to be here.
         GameState.clearCell(cell);
     }
     // reset all trees in deleted regions
@@ -364,7 +412,6 @@ GameState.addSpace = function(dx, dy, onLeft, onTop) {
         for (let y = from; y < to; ++y) {
             for (let x = 0; x < this.dimX; ++x) {
                 clean(x, y);
-                TMPLOG("clean", x, y)
             }
         }
     }
@@ -391,9 +438,7 @@ GameState.addSpace = function(dx, dy, onLeft, onTop) {
     this.dimY = this.dimY + dy;
     if (!startOK) { this.startCell = null; }
     if (!playerOK) { this.playerCell = this.startCell; }
-    undoStack = []
     View.draw();
-    TMPLOG("done")
 }
 
 GameState.isWater = function(x, y) {
@@ -408,18 +453,19 @@ GameState.isWater = function(x, y) {
     return false;
 }
 
-GameState.snapshot = function() {
+GameState.snapshot = function(saveMap) {
     let snapshot = {}
+    if (saveMap) this.saveMapTo(snapshot)
     this.saveDynamicStateTo(snapshot);
     this.undoStack.push(snapshot)
 }
 GameState.undo = function() {
     if (!this.undoStack.length) {
-        postMessage("Undo stack is empty.", true);
+        postMessage("Undo history is empty.", true);
         return
     }
     let snapshot = this.undoStack.pop()
-    this.loadDynamicStateFrom(snapshot)
+    this.loadFrom(snapshot)
     View.draw()
 }
 

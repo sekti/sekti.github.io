@@ -1,5 +1,6 @@
-TERRAIN_CHARS = {
+TOOL_CHARS = {
     pan: null,
+    dragdrop: null,
     water: ' ',
     grass: '·',
     tree: '1',
@@ -11,8 +12,9 @@ TERRAIN_CHARS = {
     reset: 'R',
     start: 'M',
 }
-TERRAIN_TOOLTIPS = {
+TOOL_TIPS = {
     pan: "[pan]",
+    dragdrop: "select, drag and drop",
     water: 'water',
     grass: 'grass',
     tree: 'tree',
@@ -32,9 +34,13 @@ MENU_FUNCTIONS = {
 }
 
 Editor = {
-    selectedTool: null,
+    selectedTool: "pan",
     toolsVisible: false,
     dialogOpen: false,
+    dragDropCells: null,
+    dragDropRect: null,
+    dragDropStart: null,
+    dragDropEnd: null,
 }
 Editor.placeTile = function(x, y, tileType) {
     if (tileType == 'M') {
@@ -45,23 +51,24 @@ Editor.placeTile = function(x, y, tileType) {
         GameState.setTerrain(x, y, tileType)
     }
 }
-Editor.selectTool = function(terrain) {
+Editor.selectTool = function(tool) {
     $("#terrain-buttons input").removeClass("selected");
-    if (Editor.selectedTool != TERRAIN_CHARS[terrain] && terrain) {
-        $("#button-" + terrain).addClass("selected");
-        Editor.selectedTool = TERRAIN_CHARS[terrain];
+    if (this.selectedTool != tool) {
+        $("#button-" + tool).addClass("selected");
+        this.selectedTool = tool;
     } else {
         // deselect instead (prevents accidental drawing)
         $("#button-pan").addClass("selected");
-        Editor.selectedTool = null;
+        this.selectedTool = "pan";
     }
 }
 
 Editor.useTool = function(px, py) {
-    if (this.selectedTool) {
+    // most tools paint terrain
+    if (TOOL_CHARS[this.selectedTool]) {
         pos = View.canvasToTile(px, py);
         if (pos != null) {
-            Editor.placeTile(pos.x, pos.y, Editor.selectedTool);
+            Editor.placeTile(pos.x, pos.y, TOOL_CHARS[this.selectedTool]);
             View.draw();
         }
     }
@@ -78,12 +85,12 @@ Editor.addControls = function() {
 
     // terrain buttons
     let editorButtons = $("#terrain-buttons");
-    for (let terrain in TERRAIN_CHARS) {
+    for (let terrain in TOOL_CHARS) {
         makeButton(terrain, event => {
             Editor.selectTool(terrain);
-        }, TERRAIN_TOOLTIPS[terrain]).appendTo(editorButtons)
+        }, TOOL_TIPS[terrain]).appendTo(editorButtons)
     }
-    Editor.selectTool(null);
+    Editor.selectTool("pan");
     // menu bottons
     let menuButtons = $("#menu-buttons");
     for (let command in MENU_FUNCTIONS) {
@@ -100,6 +107,96 @@ Editor.addControls = function() {
     }, "help/about").appendTo($("#important-buttons"))
 
     this.toggleeditor();
+}
+
+/* Drag Drop functionality */
+Editor.updateDragDropSet = function() {
+    this.dragDropCells = []
+    let r = this.dragDropRect;
+    let canonical = { // logical rectangle
+        x0: Math.min(r.x0, r.x1),
+        y0: Math.min(r.y0, r.y1),
+        x1: Math.max(r.x0, r.x1),
+        y1: Math.max(r.y0, r.y1)
+    }
+    pos0 = View.canvasToTile(canonical.x0, canonical.y0);
+    pos1 = View.canvasToTile(canonical.x1, canonical.y1);
+
+    for (let x = pos0.x + 1; x < pos1.x; ++x) {
+        for (let y = pos0.y + 1; y < pos1.y; ++y) {
+            let terrain = GameState.getTerrain(x, y);
+            if (terrain && terrain != ' ') {
+                this.dragDropCells.push({ x: x, y: y });
+            }
+        }
+    }
+}
+Editor.pickup = function(px, py) {
+    // am I clicking on a selected tile?
+    let pos = View.canvasToTile(px, py)
+    if (this.dragDropCells && this.dragDropCells.some(p => p.x == pos.x && p.y == pos.y)) {
+        // start drag drop
+        this.dragDropStart = this.dragDropEnd = pos;
+    } else {
+        // remove selection
+        this.dragDropCells = []
+            // start selection
+        this.dragDropRect = {
+            x0: px,
+            x1: px,
+            y0: py,
+            p1: py,
+        }
+    }
+
+    View.draw();
+}
+Editor.drag = function(px, py) {
+    if (this.dragDropRect) {
+        this.dragDropRect.x1 = px;
+        this.dragDropRect.y1 = py;
+        this.updateDragDropSet()
+        View.draw();
+    } else if (this.dragDropStart) {
+        this.dragDropEnd = View.canvasToTile(px, py)
+        View.draw();
+    }
+}
+Editor.drop = function(px, py) {
+    if (this.dragDropRect) {
+        this.dragDropRect = null;
+        View.draw();
+    } else if (this.dragDropStart) {
+        let dx = this.dragDropEnd.x - this.dragDropStart.x
+        let dy = this.dragDropEnd.y - this.dragDropStart.y
+        GameState.moveCells(this.dragDropCells, dx, dy); //also moves the selection
+        this.dragDropEnd = this.dragDropStart = null;
+        // move selection accordingly
+        this.dragDropCells = this.dragDropCells.filter(pos => GameState.getCell(pos.x, pos.y));
+        View.draw();
+    }
+}
+Editor.drawDragDropOverlay = function() {
+    if (this.dragDropCells) {
+        for (let pos of this.dragDropCells) {
+            View.drawTile(pos.x, pos.y, TILESET.SELECTION);
+        }
+    }
+    if (this.dragDropRect) {
+        ctx.beginPath();
+        let r = this.dragDropRect;
+        ctx.rect(Math.min(r.x0, r.x1), Math.min(r.y0, r.y1), Math.abs(r.x0 - r.x1), Math.abs(r.y0 - r.y1));
+        ctx.stroke();
+    }
+    if (this.dragDropStart && this.dragDropEnd) {
+        console.assert(this.dragDropCells && this.dragDropEnd)
+            // show phantom of where drag drop would place selected tiles
+        let dx = this.dragDropEnd.x - this.dragDropStart.x
+        let dy = this.dragDropEnd.y - this.dragDropStart.y
+        for (let pos of this.dragDropCells) {
+            View.drawTile(pos.x + dx, pos.y + dy, TILESET.DRAGGING);
+        }
+    }
 }
 
 Editor.openDialog = function(id) {
@@ -124,6 +221,7 @@ Editor.confirmNewMap = function() {
     saveGame.dimY = +$("#editdimy")[0].value
     saveGame.map = Array(saveGame.dimX).fill(' '.repeat(saveGame.dimY))
     GameState.loadFrom(saveGame)
+    GameState.undoStack = []
     this.closeDialog();
 }
 Editor.changedimensions = function() {
@@ -152,6 +250,7 @@ Editor.editmeta = function() {
     this.openDialog("editmeta")
 }
 Editor.confirmEditMeta = function() {
+    GameState.snapshot(true); // part of the static information
     GameState.setTitleAuthorFinished($("#edittitle")[0].value, $("#editauthor")[0].value, $("#finished")[0].checked);
     this.closeDialog();
 }
@@ -182,24 +281,33 @@ canvas.onwheel = function(event) {
 canvas.onmousedown = function(event) {
     if (event.buttons & 2) { return; } // right mouse button
     event.preventDefault();
-    if ((event.buttons & 4) || Editor.selectedTool == null) {
-        View.startDrag(event.clientX, event.clientY);
+    if ((event.buttons & 4) || Editor.selectedTool == "pan") {
+        View.startPan(event.clientX, event.clientY);
     }
     if (event.buttons & 1) {
         Editor.useTool(event.offsetX, event.offsetY);
+        if (Editor.selectedTool == "dragdrop") {
+            Editor.pickup(event.offsetX, event.offsetY)
+        }
     }
 }
 
 canvas.onmouseup = function(event) {
     event.preventDefault();
-    View.stopDrag();
+    View.stopPan();
+    if (Editor.selectedTool == "dragdrop") {
+        Editor.drop(event.offsetX, event.offsetY)
+    }
 }
 
 canvas.onmousemove = function(event) {
     event.preventDefault();
-    View.doDrag(event.clientX, event.clientY);
+    View.doPan(event.clientX, event.clientY);
     if (event.buttons & 1) {
         Editor.useTool(event.offsetX, event.offsetY);
+        if (Editor.selectedTool == "dragdrop") {
+            Editor.drag(event.offsetX, event.offsetY)
+        }
     }
 }
 

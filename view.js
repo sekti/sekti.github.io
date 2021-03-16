@@ -28,6 +28,8 @@ TILESET = {
     GRASS: new Tile("background-tiles", 128, 0),
     GRASS2: new Tile("background-tiles", 128, 1),
     WATER: new Tile("background-tiles", 128, 2),
+    SELECTION: new Tile("background-tiles", 128, 3),
+    DRAGGING: new Tile("background-tiles", 128, 4),
     TREE: new Tile("props", 256, 0),
     TALLTREE: new Tile("props", 256, 1),
     POSTBOX: new Tile("props", 256, 2),
@@ -64,10 +66,10 @@ View = {
     cx: 0,
     cy: 0,
     pxPerTile: 75,
-    clickIsDrag: false,
-    dragging: false,
-    lastDragX: -1,
-    lastDragY: -1,
+    clickIsPan: false,
+    panning: false,
+    lastPanX: -1,
+    lastPanY: -1,
     showGrid: false,
 };
 View.xToCanvasX = function(x) {
@@ -138,23 +140,23 @@ View.showIsland = function(island) {
     this.pxPerTile = Math.max(pxPerTileMIN, Math.min(pxPerTileMAX, this.pxPerTile));
 }
 
-View.startDrag = function(x, y) {
-    this.dragging = true;
-    this.lastDragX = x;
-    this.lastDragY = y;
+View.startPan = function(x, y) {
+    this.panning = true;
+    this.lastPanX = x;
+    this.lastPanY = y;
 }
-View.doDrag = function(x, y) {
-    if (!this.dragging) return;
-    let dx = x - this.lastDragX;
-    let dy = y - this.lastDragY;
+View.doPan = function(x, y) {
+    if (!this.panning) return;
+    let dx = x - this.lastPanX;
+    let dy = y - this.lastPanY;
     this.cx -= dx / this.pxPerTile;
     this.cy -= dy / (this.pxPerTile * ASPECT_RATIO);
-    this.lastDragX = x;
-    this.lastDragY = y;
+    this.lastPanX = x;
+    this.lastPanY = y;
     this.draw();
 }
-View.stopDrag = function() {
-    this.dragging = false;
+View.stopPan = function() {
+    this.panning = false;
 }
 View.drawTexture = function(tile, x, y, dimx, dimy) {
     // tile object, upper left corner, logical dimensions of the tile
@@ -256,10 +258,13 @@ View.draw = function() {
             GameState.drawDynamicProps(x, y);
         }
     }
+    Editor.drawDragDropOverlay();
     if (this.showGrid) {
         this.drawGrid();
     }
 }
+
+window.addEventListener("resize", _ => View.draw());
 
 View.zoom = function(dir) {
     if (dir) {
