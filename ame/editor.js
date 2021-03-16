@@ -234,7 +234,6 @@ Editor.confirmChangeDimensions = function() {
     let dy = +$("#editddimy")[0].value;
     let onLeft = $("#ddimxleft")[0].checked;
     let onTop = $("#ddimytop")[0].checked;
-    TMPLOG(dx, dy, onLeft, onTop);
     if (dx || dy) {
         GameState.addSpace(dx, dy, onLeft, onTop);
     }

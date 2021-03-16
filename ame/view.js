@@ -245,8 +245,7 @@ View.drawStaticProps = function(x, y) {
 }
 
 View.draw = function() {
-    TMPLOG("draw")
-        // in case of resize
+    // in case of resize
     updateCanvas();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.rect(0, 0, canvas.width, canvas.height);
@@ -277,7 +276,7 @@ View.draw = function() {
     }
 }
 
-//window.addEventListener("resize", _ => View.draw());
+window.addEventListener("resize", _ => View.draw());
 
 View.zoom = function(dir) {
     if (dir) {
