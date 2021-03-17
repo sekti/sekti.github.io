@@ -1,6 +1,7 @@
 TOOL_CHARS = {
     pan: null,
     dragdrop: null,
+    nothing: null,
     water: ' ',
     grass: '·',
     tree: '1',
@@ -15,6 +16,7 @@ TOOL_CHARS = {
 TOOL_TIPS = {
     pan: "[pan]",
     dragdrop: "select, drag and drop",
+    nothing: "“nothing”. Use to make the map smaller.",
     water: 'water',
     grass: 'grass',
     tree: 'tree',
@@ -28,7 +30,7 @@ TOOL_TIPS = {
 }
 MENU_FUNCTIONS = {
     newmap: "create a new map of water tiles",
-    changedimensions: "extend or shrink the map",
+    //changedimensions: "extend or shrink the map",
     resetall: "reset all islands and the player",
     editmeta: "edit map title and author",
 }
@@ -69,8 +71,41 @@ Editor.selectTool = function(tool) {
 
 Editor.useTool = function(px, py) {
     // most tools paint terrain
-    if (TOOL_CHARS[this.selectedTool]) {
+    if (this.selectedTool == "nothing") {
+        // find the smallest distance to the border
         pos = View.canvasToTile(px, py);
+        if (pos == null) return; // already out of bounds
+        let closest = [
+            { dist: pos.x + 1, dx: -pos.x - 1, dy: 0, onLeft: true, },
+            { dist: pos.y + 1, dy: -pos.y - 1, dx: 0, onTop: true, },
+            { dist: GameState.dimX - pos.x, dx: pos.x - GameState.dimX, dy: 0, },
+            { dist: GameState.dimY - pos.y, dy: pos.y - GameState.dimY, dx: 0, },
+        ].reduce((o1, o2) => o1.dist < o2.dist ? o1 : o2);
+        GameState.addSpace(closest.dx, closest.dy, !!closest.onLeft, !!closest.onTop)
+    } else if (TOOL_CHARS[this.selectedTool]) {
+        pos = View.canvasToTile(px, py);
+        if (!pos) {
+            // we are getting a cell out of bounds
+            pos = View.canvasToTile(px, py, true);
+            let onLeft = false,
+                onTop = false;
+            let dx = 0,
+                dy = 0;
+            if (pos.x < 0) {
+                onLeft = true;
+                dx = -pos.x;
+            } else if (pos.x >= GameState.dimX) {
+                dx = pos.x - GameState.dimX + 1;
+            }
+            if (pos.y < 0) {
+                onTop = true;
+                dy = -pos.y;
+            } else if (pos.y >= GameState.dimY) {
+                dy = pos.y - GameState.dimY + 1;
+            }
+            GameState.addSpace(dx, dy, onLeft, onTop)
+            pos = View.canvasToTile(px, py, true);
+        }
         if (pos != null) {
             Editor.placeTile(pos.x, pos.y, TOOL_CHARS[this.selectedTool]);
             View.draw();
@@ -228,6 +263,8 @@ Editor.confirmNewMap = function() {
     GameState.undoStack = []
     this.closeDialog();
 }
+
+/* not needed since we can paint “nothing”
 Editor.changedimensions = function() {
     $("#editddimx")[0].value = 0;
     $("#editddimy")[0].value = 0;
@@ -242,7 +279,8 @@ Editor.confirmChangeDimensions = function() {
         GameState.addSpace(dx, dy, onLeft, onTop);
     }
     this.closeDialog();
-}
+}*/
+
 Editor.resetall = function() {
     GameState.resetAll();
 }

@@ -51,6 +51,8 @@
                 <input type="button" value="OK" onclick='Editor.confirmNewMap();' />
             </p>
         </div>
+        <!--
+            replaced with the “nothing” pseudo tile
         <div id="changedimensions">
             <h2>Extend the Map</h2>
             <p>(use negative numbers to shrink)</p>
@@ -80,7 +82,7 @@
                 <input type="button" value="CANCEL" onclick='Editor.closeDialog();' />
                 <input type="button" value="OK" onclick='Editor.confirmChangeDimensions();' />
             </p>
-        </div>
+        </div>-->
         <div id="about">
             <div style="position:sticky;z-index:3;text-align:right;height:0;top:0">
                 <input type="button" value="CLOSE" onclick='Editor.closeDialog();' />
@@ -163,7 +165,7 @@
                 <tr>
                     <td><img src="./img/icon-mouse.png"></td>
                     <td>
-                        <span>Left-click</span> to place selected tiles in the map.
+                        <span>Left-click</span> to place selected tiles in the map.<br> Note: You can paint <i>outside</i> of the current map to enlarge it correspondingly.
                     </td>
                 </tr>
                 <tr>
@@ -185,6 +187,12 @@
                     </td>
                 </tr>
                 <tr>
+                    <td><img src="./img/button-nothing.png"></td>
+                    <td>
+                        Pseudo Tile: “Nothing”. Will shrink the map to exclude whatever position was clicked.
+                    </td>
+                </tr>
+                <tr>
                     <td><img src="./img/button-start.png"></td>
                     <td>
                         Special Marker: Unique starting position of the map.
@@ -202,12 +210,14 @@
                         Button: Create new level filled with water tiles.
                     </td>
                 </tr>
-                <tr>
+                <!--
+                replaced with the “nothing” pseudo-tile
+                <tr> 
                     <td><img src="./img/button-changedimensions.png"></td>
                     <td>
                         Button: Enlarge or shrink the level.
                     </td>
-                </tr>
+                </tr>-->
                 <tr>
                     <td><img src="./img/button-resetall.png"></td>
                     <td>
