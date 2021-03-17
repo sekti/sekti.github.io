@@ -123,8 +123,8 @@ Editor.updateDragDropSet = function() {
         x1: Math.max(r.x0, r.x1),
         y1: Math.max(r.y0, r.y1)
     }
-    pos0 = View.canvasToTile(canonical.x0, canonical.y0);
-    pos1 = View.canvasToTile(canonical.x1, canonical.y1);
+    pos0 = View.canvasToTile(canonical.x0, canonical.y0, true);
+    pos1 = View.canvasToTile(canonical.x1, canonical.y1, true);
 
     for (let x = pos0.x + 1; x < pos1.x; ++x) {
         for (let y = pos0.y + 1; y < pos1.y; ++y) {
@@ -137,7 +137,7 @@ Editor.updateDragDropSet = function() {
 }
 Editor.pickup = function(px, py) {
     // am I clicking on a selected tile?
-    let pos = View.canvasToTile(px, py)
+    let pos = View.canvasToTile(px, py, true)
     if (this.dragDropCells && this.dragDropCells.some(p => p.x == pos.x && p.y == pos.y)) {
         // start drag drop
         this.dragDropStart = this.dragDropEnd = pos;
@@ -162,7 +162,7 @@ Editor.drag = function(px, py) {
         this.updateDragDropSet()
         View.draw();
     } else if (this.dragDropStart) {
-        this.dragDropEnd = View.canvasToTile(px, py)
+        this.dragDropEnd = View.canvasToTile(px, py, true)
         View.draw();
     }
 }
@@ -341,18 +341,22 @@ function processInput(event) {
     switch (event.key) {
         case "w":
         case "ArrowUp":
+            Editor.selectTool("pan"); // I tend to forget I have a tool selected
             GameState.input(UP);
             break;
         case "s":
         case "ArrowDown":
+            Editor.selectTool("pan"); // I tend to forget I have a tool selected
             GameState.input(DOWN);
             break;
         case "a":
         case "ArrowLeft":
+            Editor.selectTool("pan"); // I tend to forget I have a tool selected
             GameState.input(LEFT);
             break;
         case "d":
         case "ArrowRight":
+            Editor.selectTool("pan"); // I tend to forget I have a tool selected
             GameState.input(RIGHT);
             break;
         case "g":

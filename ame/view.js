@@ -105,13 +105,15 @@ View.tileVisible = function(x, y, tilesTolerance = 0) {
     return canvasX > TOLERANCE && canvasX < canvas.width - TOLERANCE &&
         canvasY > TOLERANCE && canvasY < canvas.height - TOLERANCE;
 }
-View.canvasToTile = function(px, py) {
+View.canvasToTile = function(px, py, allowOutOfBounds = false) {
     let ret = {
         x: Math.round((px - canvas.width / 2) / this.pxPerTile + this.cx),
         y: Math.round((py - canvas.height / 2) / (this.pxPerTile * ASPECT_RATIO) + this.cy),
     }
-    if (ret.x < 0 || ret.x >= GameState.dimX || ret.y < 0 || ret.y >= GameState.dimY) {
-        return null;
+    if (!allowOutOfBounds) {
+        if (ret.x < 0 || ret.x >= GameState.dimX || ret.y < 0 || ret.y >= GameState.dimY) {
+            return null;
+        }
     }
     return ret;
 }

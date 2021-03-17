@@ -438,6 +438,10 @@ GameState.addSpace = function(dx, dy, onLeft, onTop) {
     this.dimY = this.dimY + dy;
     if (!startOK) { this.startCell = null; }
     if (!playerOK) { this.playerCell = this.startCell; }
+
+    // focus should be on the “same” area as before:
+    if (onLeft) View.cx += dx;
+    if (onTop) View.cy += dy;
     View.draw();
 }
 
