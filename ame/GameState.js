@@ -1,3 +1,4 @@
+const STRICT_PHYSICS = false; // try to emulate bugs in the original?
 const HORIZONTAL = -1;
 const VERTICAL = 1;
 let LEFT = { dx: -1, dy: 0, axis: HORIZONTAL, name: "left" }
@@ -188,22 +189,32 @@ GameState.clearCell = function(cell) {
         this.recallLog(cell)
     }
 }
-GameState.recallLog = function(origin) {
+GameState.recallLog = function(origin, modifiedCells = null) {
+    // When resetting I need to know modified cells so I can settle logs there
+    function modified(log) {
+        if (modifiedCells) {
+            modifiedCells.add(log.cell);
+            if (log.sibling) modifiedCells.add(log.sibling.cell);
+        }
+    }
     for (cellRow of this.cells) {
         for (cell of cellRow) {
             for (log of cell.logs) {
                 if (log.isRaft && log.origin2 == origin) {
+                    modified(log)
                     log.axis = log.isRaft;
                     log.isRaft = false;
                     log.origin2 = undefined;
                 }
                 if (log.isRaft && log.origin == origin) {
+                    modified(log)
                     log.axis = log.isRaft;
                     log.isRaft = false;
                     log.origin = log.origin2;
                     log.origin2 = undefined;
                 }
                 if (log.origin == origin) {
+                    modified(log)
                     cell.removeLog(log)
                 }
             }
@@ -269,10 +280,14 @@ GameState.resetIsland = function() {
     }
     console.log("Resetting Island.")
     this.snapshot(); // for undo
+    let modifiedCells = new Set()
     for (cell of island) {
         if ((cell.terrain == '1' || cell.terrain == '2') && cell.chopped) {
-            this.recallLog(cell)
+            this.recallLog(cell, modifiedCells)
         }
+    }
+    for (modifiedCell of modifiedCells) {
+        modifiedCell.settle();
     }
 }
 

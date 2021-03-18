@@ -54,7 +54,7 @@ GameState.tryNudge = function(log, dir) {
         if (isSimpleLog) {
             log.axis = 0; // standing now
         }
-        log.settle(dir.axis) // done moving, might combine
+        complex.settle(dir.axis) // done moving, might combine
         GameState.playerCell = GameState.playerCell.nextCell(dir)
     }
 

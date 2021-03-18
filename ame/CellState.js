@@ -104,6 +104,10 @@ class Log {
         // if I am in water, I need to assume a direction
         if (this.axis == 0 && this.getElevation() == -2 && !this.isRaft) {
             this.axis = preferredAxis;
+            if (!preferredAxis) {
+                console.log("Unspecified behaviour encountered. Standing log in water with no preferred direction.")
+                this.axis = HORIZONTAL;
+            }
         }
         // check if I need to combine with other logs
         let log = this.getLogBelow()
@@ -353,6 +357,15 @@ class LogComplex {
         this.logs.forEach(log => log.moveTo(dir, false));
     }
 
+    settle(dir) {
+        // logs of the complex are given from bottom to top
+        // it should therefore be fine to settle them in order
+        // (note: this may remove some logs of the complex!)
+        for (let log of this.logs) {
+            log.settle(dir);
+        }
+    }
+
     grindsToHalt() {
         return this.logs.some(complexLog => {
             // stop if raft is lying on land
@@ -426,6 +439,12 @@ class CellState {
     saveLogsTo(logs) {
         for (log of this.logs) {
             logs.push(log.toSave())
+        }
+    }
+    settle() {
+        // careful: settling logs can remove them, (but not logs above). make a copy.
+        for (let log of[...this.logs]) {
+            log.settle() //
         }
     }
 }
