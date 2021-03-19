@@ -289,10 +289,19 @@ GameState.tryPushFloat = function(cell, dir) {
 }
 
 GameState.focusPlayer = function(refocus = false) {
+    function islandVisible(island) {
+        return [...island].every(cell => View.tileVisible(cell.x, cell.y, 1.5))
+    }
+
     if (!this.playerCell) return;
     let island = this.getIsland(this.playerCell);
-    let isGood = !refocus && View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
-    if (island && (!this.onIsland || !isGood)) {
+    // force refous
+    let isGood = !refocus;
+    // player visible? 
+    isGood = isGood && View.tileVisible(this.playerCell.x, this.playerCell.y, 1.5);
+    // Player has just entered the island, then I want the whole island visible
+    isGood = isGood && this.onIsland || (island && islandVisible(island));
+    if (!isGood && island) {
         View.showIsland(island);
     } else if (!isGood) {
         View.cx = this.playerCell.x;
