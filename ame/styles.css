@@ -26,6 +26,7 @@ canvas {
 
 #menu-buttons {
     flex-direction: column;
+    flex-wrap: wrap;
     bottom: 250px;
     top: 20px;
     left: 10px;
@@ -76,8 +77,8 @@ canvas {
     background-size: contain;
     cursor: pointer;
     margin: 2pt;
-    width: 80pt;
-    height: 80pt;
+    width: clamp(50pt, 6vw, 90pt);
+    height: clamp(50pt, 6vw, 90pt);
     pointer-events: all;
     box-shadow: 2px 2px 6px 3px #333333;
 }
