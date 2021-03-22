@@ -1,24 +1,31 @@
-{"dimX":27,"dimY":20,"title":"I didn't want to ride that stupid raft anyway",
+[Level] I didn't want to ride that stupid raft anyway. (medium-hard)
+
+Hint 1: You reach the friend's island on foot. The only raft you need to ride is the northern connector.
+Hint 2: You need not transfer logs into the starting island.
+Hint 3: You need four logs on the bottom left island.
+Solution idea: All interesting steps happen on the left two islands. Resetting islands several times, get four logs on the bottom island. Then build a raft using the logs from the bottom island. Put another log on top and push it such that the raft hits the friend's island and the log on top keeps rolling. Reset the raft's logs and send another log over using the same method. You now have a raft bridging the gap between the starting island and the friend.
+
+{"dimX":24,"dimY":20,"title":"I didn't want to ride that stupid raft anyway",
 "author":"sekti",
-"finished":false,"startX":22,"startY":10,"map":[
-"                           ",
-"          B                ",
-"         B             B   ",
-"      ····R    B    ·1·1·  ",
-"     ·1··1·         ·····  ",
-"     ······          ·R·   ",
-"                B          ",
-"        ··           ·1·   ",
-"       ·R·· B        ···   ",
-"       ·····     ··· ···   ",
-"      ·····b    b·S·  R    ",
-"      ·····b    b···       ",
-"      ···1···              ",
-"       ······              ",
-"       ·1···               ",
-"       ···                 ",
-"                           ",
-"                           ",
-"                           ",
-"                           "]
+"finished":false,"startX":19,"startY":10,"map":[
+"                        ",
+"       B                ",
+"      B             B   ",
+"   ····R    B    ·1·1·  ",
+"  ·1··1·         ·····  ",
+"  ······          ·R·   ",
+"             B          ",
+"     ·            ·1·   ",
+"    ·R·· B        ···   ",
+"    ·····     ··· ···   ",
+"   ·····b    b·S·  R    ",
+"   ·····b    b···       ",
+"   ···1···              ",
+"    ······              ",
+"    ·1···               ",
+"    ···                 ",
+"                        ",
+"                        ",
+"                        ",
+"                        "]
 }

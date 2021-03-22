@@ -1,0 +1,35 @@
+[Level] Detour (medium-hard)
+
+Creative use of the reset mechanic is required for this one.
+
+Hint 1: Yes, you need to build a bridge using the tall tree.
+Hint 2: Yes, once you roll the tall tree north, you need to traverse all the other islands to be able to push it from the west.
+Hint 3: You need a raft between the bottom right island and the island with the tall tree as well as a bridge between the bottom two islands.
+Hint 4: The top tree will make the bridge. It moves there while being part of a raft.
+
+Solution sketch: Call the trees/logs from top to bottom A,B,C, excluding the tall tree. First, move C onto B's island. Use one to make a bridge to A's island, roll the other over into the tile below the rock. Complete the raft using A and sail down. After resetting B and C, the log A will form a bridge. Move B to C's island and roll both over the bridge. Make a raft to the island with the tall tree. Roll the tall tree against the rocks. Travel back to C's island, then, resetting trees as you go, make your way over to the tall tree's island and make a new friend. 
+
+{"dimX":26,"dimY":20,"title":"Detour",
+"author":"sekti",
+"finished":false,"startX":1,"startY":7,"map":[
+"                          ",
+"          ····            ",
+"         ······      ···  ",
+"        ···1··· bbb  ·S·  ",
+"       ········ R··  ···  ",
+"      ······b   b··b      ",
+"  ··· R·····     ··B      ",
+" R···            ··2·     ",
+" ····             ···     ",
+" ··1·   ···               ",
+" b··· ···b·               ",
+"  ··· R·····              ",
+"      ····1·  ··          ",
+"        ···· ···          ",
+"         ··· R··b         ",
+" B          b ··          ",
+"                          ",
+"                          ",
+"                B         ",
+"                          "]
+}

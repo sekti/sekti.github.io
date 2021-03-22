@@ -1,34 +1,40 @@
-{"dimX":30,"dimY":30,"title":"No one left behind",
+[Level] No one left behind (very hard)
+
+The solution to this level is complex, and involves many resets. While you may encounter interactions you have not seen before while experimenting, the intended solution does not exploit any obscure mechanics.
+
+Hint 1: Work out the final steps first. Hint 2 will reveal them.
+Hint 2: Build a long raft in between the two islands and build another raft on top. Propel yourself south and unload the raft there.
+Hint 3: In the first difficult step, you bring the single log from the left island to the right island. This involves bringing a log from east to west over a bridge below the tall boulder.
+Hint 4: To build the small raft, you need to get the short log from the west island close to the southern tip of the east island.
+
+
+{"dimX":20,"dimY":26,"title":"No one left behind",
 "author":"sekti",
-"finished":false,"startX":9,"startY":7,"map":[
-"                              ",
-"                              ",
-"                              ",
-"                              ",
-"                              ",
-"                ···           ",
-"          ··b  B·R··          ",
-"         R2···  ···b   B      ",
-"         ····b ······         ",
-"         ····  1·2···         ",
-"         ·1··  ·····          ",
-"      B     b  ·b··           ",
-"               ···            ",
-"               ··             ",
-"                              ",
-"                              ",
-"                              ",
-"               ··             ",
-"           B   ···            ",
-"              ····            ",
-"              ··b·            ",
-"              ··              ",
-"                              ",
-"                              ",
-"               ···            ",
-"               ·S·            ",
-"               ···            ",
-"                              ",
-"                              ",
-"                              "]
+"finished":false,"startX":4,"startY":4,"map":[
+"                    ",
+"                    ",
+"           ···      ",
+"     ··b  B·R··     ",
+"    R2···  ···b   B ",
+"    ····b ······    ",
+"    ····  1·2···    ",
+"    ·1··  ·····     ",
+" B     b  ·b··      ",
+"          ···       ",
+"          ··        ",
+"                    ",
+"                    ",
+"                    ",
+"          ··        ",
+"      B   ···       ",
+"         ····       ",
+"         ··b·       ",
+"         ··         ",
+"                    ",
+"                    ",
+"          ···       ",
+"          ·S·       ",
+"          ···       ",
+"                    ",
+"                    "]
 }

@@ -1,3 +1,10 @@
+[Level] Joint Forces (medium)
+
+No advanced trickery (other than resets) required.
+
+Hint 1: This is all about moving logs between the islands.
+Hint 2: You have to make a raft at the western island.
+
 {"dimX":25,"dimY":18,"title":"Joint Forces",
 "author":"sekti",
 "finished":false,"startX":2,"startY":3,"map":[
