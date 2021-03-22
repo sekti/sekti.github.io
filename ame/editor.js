@@ -47,7 +47,10 @@ Editor = {
 Editor.placeTile = function(x, y, tileType) {
     if (tileType == 'M') {
         /* pseudo tile, handled by game state */
-        this.placeTile(x, y, '·'); // make grass
+        let c = GameState.getTerrain(x, y)
+        if (c != 'R' && c != '·') {
+            this.placeTile(x, y, '·'); // make grass
+        }
         GameState.setStartPos(x, y);
     } else {
         GameState.setTerrain(x, y, tileType)
