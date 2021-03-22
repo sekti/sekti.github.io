@@ -234,6 +234,7 @@ const CHEAT_TRAVEL = 2;
 GameState.startFastTravel = function(cheat) {
     GameState.fastTraveling = cheat ? CHEAT_TRAVEL : FAST_TRAVEL;
     GameState.onIsland = false;
+    postMessage("Click on a post-box to fast-travel.")
 }
 GameState.endFastTravel = function(x, y) {
     let cell = this.cells[y] ? this.cells[y][x] : undefined;
@@ -391,6 +392,7 @@ GameState.loadDynamicStateFrom = function(saveGame) {
             View.cy = focusCell.y
         }
     }
+    this.fastTraveling = false;
 }
 GameState.loadFrom = function(saveGame) {
     if (saveGame.map) {

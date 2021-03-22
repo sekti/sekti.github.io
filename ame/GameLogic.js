@@ -318,6 +318,7 @@ GameState.focusPlayer = function(refocus = false) {
 GameState.input = function(dir) {
     if (!this.playerCell) return;
     if (this.fastTraveling) {
+        postMessage("Click on a post-box to fast-travel.")
         console.log("Refusing input while fast-traveling.")
         return;
     }
