@@ -501,16 +501,25 @@ GameState.undo = function(static) {
 }
 
 function saveToClipboardData(event) {
+    if (Editor.dialogOpen) return;
+
     let saveGame = {}
     GameState.saveTo(saveGame)
         // make it look pretty in monospace
     let string = JSON.stringify(saveGame).replace(/"map":\[/, '"map":[\n').replace(/"\,/g, '",\n').replace(/"\]/, '"]\n')
     event.clipboardData.setData('text/plain', string)
     event.preventDefault();
-    postMessage("Saved Map and GameState to Clipboard ✓")
+    let clean = (saveGame.x || saveGame.logs || saveGame.friends) != null;
+    if (clean) {
+        postMessage("Saved Map and GameState to Clipboard ✓")
+    } else {
+        postMessage("Saved Map to Clipboard ✓")
+    }
 }
 
 function loadFromClipboardData(event) {
+    if (Editor.dialogOpen) return;
+
     console.log("Trying to Load Savegame from clipboard...")
     let text = (event.clipboardData || window.clipboardData).getData('text');
     loadFromText(text);
