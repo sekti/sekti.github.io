@@ -1,40 +1,41 @@
 [Level] The Hermit and the Postmaster (strange)
 
 Solving this level exploits a game mechanics that most player have likely not have come across during the main game.
+***
+    {"dimX":20,"dimY":23,"title":"The Hermit and the Postmaster",
+    "author":"sekti",
+    "finished":true,"startX":7,"startY":7,"map":[
+    "                    ",
+    "                    ",
+    "                    ",
+    "            B       ",
+    "      B             ",
+    "             B      ",
+    "          ··        ",
+    "  B    R···1·       ",
+    "    ··bbB····       ",
+    "    ·1b······       ",
+    "    ······P·        ",
+    "  B  ······         ",
+    "               B    ",
+    "      ··R     BbB   ",
+    "      ·1···· BbSbB  ",
+    "      ···1·· b   B  ",
+    "       ·····  ··b   ",
+    "    B   b    b··b   ",
+    "              bb    ",
+    "     B              ",
+    "            B       ",
+    "         B          ",
+    "                    "]
+    }
+***
+General Hint 1: >!The hard part is getting all four trees on the bottom island. Use them to build bridges to the friendly hermit.!<
 
-General Hint 1: The hard part is getting all four trees on the bottom island. Use them to build bridges to the friendly hermit.
 
 Hints regarding the strange mechanic:
-Hint 1: It involves the postbox.
-Hint 2: What happens if you travel to a postbox when the tile to the right contains something?
-Hint 3: The solution involves standing on the postbox.
+* Hint 1: >!It involves the postbox.!<
+* Hint 2: >!What happens if you travel to a postbox when the tile to the right contains something?!<
+* Hint 3: >!The solution involves standing on the postbox.!<
 
-Solution sketch: Using the trees from the bottom island, build a bridge to the top island and put a standing log on the tile to the right of the postbox. When entering and exiting the postbox, you will stand on that standing log. From there you can move onto the postbox. This gives you access to the tile below the postbox to push logs to the left from there. This allows rolling both logs from the top island to the bottom island.
-
-{"dimX":20,"dimY":23,"title":"The Hermit and the Postmaster",
-"author":"sekti",
-"finished":false,"startX":7,"startY":7,"map":[
-"                    ",
-"                    ",
-"      B             ",
-"            B       ",
-"                    ",
-"             B      ",
-"          ··        ",
-"  B    R···1·       ",
-"    ··bbB····       ",
-"    ·1b······       ",
-"    ······P·        ",
-"  B  ······         ",
-"               B    ",
-"      ··R     BbB   ",
-"      ·1···· BbSbB  ",
-"      ···1·· b   B  ",
-"       ·····  ··b   ",
-"    B   b    b··b   ",
-"     b        bb    ",
-"     B              ",
-"                    ",
-"         B          ",
-"                    "]
-}
+Solution sketch: >!Using the trees from the bottom island, build a bridge to the top island and put a standing log on the tile to the right of the postbox. When entering and exiting the postbox, you will stand on that standing log. From there you can move onto the postbox. This gives you access to the tile below the postbox to push logs to the left from there. This allows rolling both logs from the top island to the bottom island.!<

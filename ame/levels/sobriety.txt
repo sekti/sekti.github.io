@@ -1,38 +1,36 @@
 [Level] Sobriety Strictly Required (hard)
 
 This level contains three islands of the original map. The indended way to reach the friend is, however, no longer available. Only a strange but interesting path remains that was discovered by Youtuber MocktailRS. The level's name is a tribute to him.
-
-Hint 1: Get a single log from the bottom island to the main island. Afterwards, the bottom island is no longer needed.
-Hint 2: Build a raft three tiles north of the left tree.
-Hint 3: You need another raft on land as a (movable) platform.
-Solution: Part 1 of https://www.youtube.com/watch?v=byFR50Kd0Dg
-
-
-
-{"dimX":15,"dimY":23,"title":"Sobriety Strictly Required",
-"author":"sekti (excerpt from original map)",
-"finished":false,"startX":1,"startY":12,"map":[
-"               ",
-"     ··        ",
-"   ·····       ",
-"   ···S·       ",
-"   ·····       ",
-"    ···        ",
-"               ",
-"               ",
-"               ",
-"               ",
-"               ",
-"  ·b b···      ",
-" ·b····2··     ",
-" R·1····b·     ",
-" ···· ···      ",
-"  ··· ··       ",
-"               ",
-"          ···  ",
-"      R·  ···· ",
-"      ·····1 · ",
-"       21···   ",
-"        ···    ",
-"               "]
-}
+***
+    {"dimX":15,"dimY":23,"title":"Sobriety Strictly Required",
+    "author":"sekti (excerpt from original map)",
+    "finished":true,"startX":1,"startY":12,"map":[
+    "               ",
+    "     ··        ",
+    "   ·····       ",
+    "   ···S·       ",
+    "   ·····       ",
+    "    ···        ",
+    "               ",
+    "               ",
+    "               ",
+    "               ",
+    "               ",
+    "  ·b b···      ",
+    " ·b····2··     ",
+    " R·1····b·     ",
+    " ···· ···      ",
+    "  ··· ··       ",
+    "               ",
+    "          ···  ",
+    "      R·  ···· ",
+    "      ·····1 · ",
+    "       21···   ",
+    "        ···    ",
+    "               "]
+    }
+***
+* Hint 1: >!Get a single log from the bottom island to the main island. Afterwards, the bottom island is no longer needed.!<
+* Hint 2: >!Build a raft three tiles north of the left tree.!<
+* Hint 3: >!You need another raft on land as a (movable) platform.!<
+* Solution: >!Part 1 of this [Video walkthrough by MocktailRS](https://www.youtube.com/watch?v=byFR50Kd0Dg)!<

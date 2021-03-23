@@ -1,38 +1,38 @@
 [Level] Circular Reasoning (Medium-Hard)
-
-Hint 1: You reach the friend from the east, with a raft made of logs from the island with three trees.
-Hint 2: The starting island has an alternative solution when reached for the second time.
-Hint 3: The raft for reaching the friend is made on land and pushed into the water later.
-Solution Sketch: Solve the first island with a vertical raft, this will allow a raft coming from the south to stop next to the rock of the second island and continue west to the friend. On the third island create a raft one tile south of the tall trees stump. Use the second part of the tall tree to push off of. Making the raft involves getting the small tree to stand on the stump of the tall tree and going around the cycle twice.
-
-{"dimX":21,"dimY":27,"title":"Circular Reasoning",
-"author":"sekti",
-"finished":false,"startX":11,"startY":3,"map":[
-"                     ",
-"                     ",
-"           ·····     ",
-"          ·R2···     ",
-"   B      b·····     ",
-"  B        ··2       ",
-"          ···  ···   ",
-"              ·R1·   ",
-"      ···     b·1·   ",
-"      ·S·  B   ···   ",
-"      ···      ···   ",
-"                     ",
-"                     ",
-"              R·     ",
-"              ·b·    ",
-"              2··    ",
-"           b·····    ",
-"           ·····2    ",
-"           ··1··     ",
-"            ··       ",
-"                R·   ",
-"                ·1   ",
-"                ·1B  ",
-"  B               b  ",
-"   B                 ",
-"                     ",
-"                     "]
-}
+***
+    {"dimX":21,"dimY":27,"title":"Circular Reasoning",
+    "author":"sekti",
+    "finished":true,"startX":11,"startY":3,"map":[
+    "                     ",
+    "                     ",
+    "           ·····     ",
+    "          ·R2···     ",
+    "   B      b·····     ",
+    "  B        ··2       ",
+    "          ···  ···   ",
+    "              ·R1·   ",
+    "      ···     b·1·   ",
+    "      ·S·  B   ···   ",
+    "      ···      ···   ",
+    "                     ",
+    "                     ",
+    "              R·     ",
+    "              ·b·    ",
+    "              2··    ",
+    "           b·····    ",
+    "           ·····2    ",
+    "           ··1··     ",
+    "            ··       ",
+    "                R·   ",
+    "                ·1   ",
+    "                ·1B  ",
+    "  B               b  ",
+    "   B                 ",
+    "                     ",
+    "                     "]
+    }
+***
+* Hint 1: >!You reach the friend from the east, with a raft made of logs from the island with three trees.!<
+* Hint 2: >!The starting island has an alternative solution when reached for the second time.!<
+* Hint 3: >!The raft for reaching the friend is made on land and pushed into the water later.!<
+* Solution Sketch: >!Solve the first island with a vertical raft, this will allow a raft coming from the south to stop next to the rock of the second island and continue west to the friend. On the third island create a raft one tile south of the tall trees stump. Use the second part of the tall tree to push off of. Making the raft involves getting the small tree to stand on the stump of the tall tree and going around the cycle twice.!<
