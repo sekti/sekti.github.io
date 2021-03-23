@@ -141,6 +141,9 @@ Editor.addControls = function() {
         }, MENU_FUNCTIONS[command]).appendTo(menuButtons)
     }
     // toggle-menu button
+    makeButton("reddit", event => {
+        window.open('https://www.reddit.com/r/amonsterslevels/')
+    }, "open r/amonsterslevels").appendTo($("#important-buttons"))
     makeButton("toggleeditor", event => {
         Editor.toggleeditor();
     }, "show/hide editor buttons").appendTo($("#important-buttons"))

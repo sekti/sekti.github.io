@@ -502,6 +502,8 @@ GameState.undo = function(static) {
     View.draw()
 }
 
+const ADD_IDENTATION = true
+
 function saveToClipboardData(event) {
     if (Editor.dialogOpen) return;
 
@@ -509,8 +511,13 @@ function saveToClipboardData(event) {
     GameState.saveTo(saveGame)
         // make it look pretty in monospace
     let string = JSON.stringify(saveGame).replace(/"map":\[/, '"map":[\n').replace(/"\,/g, '",\n').replace(/"\]/, '"]\n')
+    if (ADD_IDENTATION) {
+        string = "    " + string.replace(/\n/g, '\n    ')
+    }
     event.clipboardData.setData('text/plain', string)
     event.preventDefault();
+
+
     let clean = (saveGame.x || saveGame.logs || saveGame.friends) != null;
     if (clean) {
         postMessage("Saved Map and GameState to Clipboard ✓")
