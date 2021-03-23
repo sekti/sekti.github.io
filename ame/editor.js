@@ -309,7 +309,7 @@ Editor.about = function() {
 Editor.toggleeditor = function() {
     this.toolsVisible = !this.toolsVisible;
     if (!this.toolsVisible) {
-        this.selectTool(null);
+        this.selectTool("pan");
         $("#terrain-buttons").addClass("hidden")
         $("#menu-buttons").addClass("hidden")
         $("#button-toggleeditor").removeClass("selected")
