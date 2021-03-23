@@ -20,8 +20,8 @@ It's just two trees, so how hard can it be? As it turns out, harder than it look
     "                "]
     }
 ***
-Hint 1: <!Both logs are needed on the eastern island.!>
-Hint 2: <!The eastern log must form a horizontal bridge. You can get it to the correct tile, but only vertically.!>
-Hint 3: <!Can you get the log in the water to twist?!>
-Hint 4: <!The solution involves making a raft and resetting one of its logs.!>
-Solution: <!Call the two water tiles between the islands N and S (“northern” and “southern”) and the logs/trees W and E (“western” and “eastern”). Get W to form a bridge at S. Then let E roll into N – it will be vertical. Reset W and also throw it into N – a horizontal raft will form. Reset W again, E will remain in N as a bridge. Roll W to the other island. Reset E. You now have both logs and can raft to your friend.!>
+* Hint 1: >!Both logs are needed on the eastern island.!<
+* Hint 2: >!The eastern log must form a horizontal bridge. You can get it to the correct tile, but only vertically.!<
+* Hint 3: >!Can you get the log in the water to twist?!<
+* Hint 4: >!The solution involves making a raft and resetting one of its logs.!<
+* Solution: >!Call the two water tiles between the islands N and S (“northern” and “southern”) and the logs/trees W and E (“western” and “eastern”). Get W to form a bridge at S. Then let E roll into N – it will be vertical. Reset W and also throw it into N – a horizontal raft will form. Reset W again, E will remain in N as a bridge. Roll W to the other island. Reset E. You now have both logs and can raft to your friend.!<

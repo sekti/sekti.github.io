@@ -25,5 +25,5 @@ No advanced trickery (other than resets) required.
     "                        "]
     }
 ***
-Hint 1: This is all about moving logs between the islands.
-Hint 2: You have to make a raft at the western island.
+* Hint 1: >!This is all about moving logs between the islands.!<
+* Hint 2: >!You have to make a raft at the western island.!<
