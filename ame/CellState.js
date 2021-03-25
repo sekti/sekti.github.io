@@ -252,7 +252,7 @@ class Log {
         // am I lexicographically larger?
         if (this.cell.y != this.sibling.cell.y) { return this.cell.y > this.sibling.cell.y }
         if (this.cell.x != this.sibling.cell.x) { return this.cell.x > this.sibling.cell.x }
-        return this.cell.logs.indexOf(this) < this.cell.logs.indexOf(this.sibling);
+        return this.cell.logs.indexOf(this) > this.cell.logs.indexOf(this.sibling);
     }
     toSave() {
         let save = {}
