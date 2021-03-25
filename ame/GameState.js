@@ -273,22 +273,29 @@ GameState.resetIsland = function() {
         searchResets();
     }
 
-    if (resetCell) {
-        this.playerCell = resetCell
-    } else if (this.playerCell.terrain == '1' || this.playerCell.terrain == '2') {
+    if (!resetCell && (this.playerCell.terrain == '1' || this.playerCell.terrain == '2')) {
         postMessage("Refusing reset because no reset position found and player is on stump.", 1)
         return
     }
     console.log("Resetting Island.")
     this.snapshot(); // for undo
+    let changed = false
+    if (resetCell && this.playerCell != resetCell) {
+        this.playerCell = resetCell
+        changed = true;
+    }
     let modifiedCells = new Set()
     for (cell of island) {
         if ((cell.terrain == '1' || cell.terrain == '2') && cell.chopped) {
             this.recallLog(cell, modifiedCells)
+            changed = true;
         }
     }
     for (modifiedCell of modifiedCells) {
         modifiedCell.settle();
+    }
+    if (!changed) {
+        this.undoStack.pop()
     }
 }
 
@@ -342,7 +349,7 @@ GameState.loadMapFrom = function(saveGame) {
     this.dimX = saveGame.dimX;
     this.dimY = saveGame.dimY;
     this.cells = [...Array(this.dimY).keys()].map(y => [...Array(this.dimX).keys()].map(x => new CellState(x, y, saveGame.map[y][x])));
-    if (saveGame.startX && saveGame.startY) {
+    if ("startX" in saveGame && "startY" in saveGame) {
         this.startCell = this.cells[saveGame.startY][saveGame.startX]
     } else {
         this.startCell = null
@@ -353,7 +360,7 @@ GameState.loadMapFrom = function(saveGame) {
     }
 }
 GameState.loadDynamicStateFrom = function(saveGame) {
-    if (saveGame.x && saveGame.y) {
+    if ("x" in saveGame && "y" in saveGame) {
         this.playerCell = this.cells[saveGame.y][saveGame.x]
     } else {
         this.playerCell = this.startCell
@@ -518,8 +525,8 @@ function saveToClipboardData(event) {
     event.preventDefault();
 
 
-    let clean = (saveGame.x || saveGame.logs || saveGame.friends) != null;
-    if (clean) {
+    let unclean = ("x" in saveGame || "logs" in saveGame || "friends" in saveGame);
+    if (unclean) {
         postMessage("Saved Map and GameState to Clipboard ✓")
     } else {
         postMessage("Saved Map to Clipboard ✓")
@@ -532,6 +539,7 @@ function loadFromClipboardData(event) {
     console.log("Trying to Load Savegame from clipboard...")
     let text = (event.clipboardData || window.clipboardData).getData('text');
     loadFromText(text);
+    GameState.undoStack = [] // don't undo past level load
 }
 
 function loadFromText(text) {
