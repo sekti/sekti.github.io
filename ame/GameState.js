@@ -232,9 +232,9 @@ GameState.recallLog = function(origin, modifiedCells = null) {
 const FAST_TRAVEL = 1;
 const CHEAT_TRAVEL = 2;
 GameState.startFastTravel = function(cheat) {
-    GameState.fastTraveling = cheat ? CHEAT_TRAVEL : FAST_TRAVEL;
-    GameState.onIsland = false;
-    postMessage("Click on a post-box to fast-travel.")
+    this.fastTraveling = cheat ? CHEAT_TRAVEL : FAST_TRAVEL;
+    this.onIsland = false;
+    postMessage(this.fastTraveling == FAST_TRAVEL ? "Click on a post-box to fast-travel." : "Click anywhere to teleport.")
 }
 GameState.endFastTravel = function(x, y) {
     let cell = this.cells[y] ? this.cells[y][x] : undefined;
