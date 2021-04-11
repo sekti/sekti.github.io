@@ -155,6 +155,19 @@ GameState.bumpLog = function(log, dir) {
         if (log.sibling) return false;
         let support = log.getLogBelow();
         if (support && support.axis == -dir.axis) {
+            if (nextCell.baseElevation() >= elev) {
+                // too high to roll onto the terrain
+                return false;
+            }
+            let nextLog = nextCell.topLog();
+            if (nextLog) {
+                // there is a log in that cell
+                if (nextLog.getTopElevation() >= elev) {
+                    // it is in the way, try to bump it away
+                    this.bumpLog(nextLog, dir);
+                    nextElev = nextCell.getElevation();
+                }
+            }
             if (nextElev < elev) {
                 // and if its going down
                 log.moveTo(dir);
