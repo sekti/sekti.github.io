@@ -1,0 +1,356 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>Insertion Time of Random Walk Cuckoo Hashing below the Peeling Threshold</title>
+        <link rel="stylesheet" href="dist/reveal.css">
+        <link rel="stylesheet" href="dist/theme/white.css" id="theme">
+        <link rel="stylesheet" href="plugin/highlight/atom-one-light.css" id="highlight-theme"> 
+        <link rel="stylesheet" href="mystyle.css" id="mystyle">
+        <script src="./figures/d3.v5.min.js"></script>
+        <script src="./figures/live.js"></script>
+        <!-- <script src="https://livejs.com/live.js"></script> -->
+<script>
+// revealjs tries to be smart and remove unused fragment indices
+// this sometimes drops indices that in my illustrations it does not know about
+function dummyFragments(n) {
+  var scriptTag = document.getElementsByTagName('script');
+  scriptTag = scriptTag[scriptTag.length - 1];
+  var parent = scriptTag.parentNode;
+  d3.select(parent).append("p").style("height","0px").attr("id","dummyFragments").selectAll("span")
+    .data(d3.range(1,n)).join("span")
+    .classed("fragment",true)
+    .attr("data-fragment-index",d => d);
+    // .text(d => "dummy" + d);
+}
+  </script>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+<section>
+  <h3>Insertion Time of<br>
+    Random Walk Cuckoo Hashing <br>
+    below the Peeling Threshold</h3>
+  <p>Stefan Walzer, University of Cologne<br>
+  ESA 2022</p>
+  <p class="small">
+    Full Version: <a href="https://arxiv.org/abs/2202.05546">arXiv:2202.05546</a><br>
+    Funding: DFG grant WA 5025/1-1
+  </p>
+  <div class="fig-container" data-style="height:10em"
+       data-file="figures/cuckooTable.html?pic=random-walk-demo&static=2"></div>
+</section>
+
+<section>
+  <h3>
+    <span class="fragment appear" data-fragment-index="3">Cuckoo</span>
+    Hashtables
+    <span class="fragment appear" data-fragment-index="3"><span class="cite">PR04,Fot+05</span></span>
+  </h3>
+  <div class="fig-container" data-style="height:10em"
+       data-file="figures/cuckooTable.html?pic=cuckooIntro"></div>
+  <script>dummyFragments(3);</script>
+</section>
+<section>
+  <h3>Construction May Fail</h3>
+  <div class="fig-container"  data-style="height:7em;width:70%"
+  data-file="figures/cuckooTable.html?pic=overful"></div>
+  <!-- <p class="fragment">$\hookrightarrow\ \ $ retry, using new seed in hash function</p> -->
+  <div style="clear:both" class="fragment nicebox" data-fragment-index="1"><p>Threshold Phenomenon <span class="cite">PR04,Fot+05,Die+10,FM12,FP10</span></p>
+    Consider the <i>load factor</i> $c = \frac{m}{n} = \frac{\#\text{keys}}{\#\text{buckets}}$.
+    <ul class="fragment">
+      <li>For $c < c_k^*$: Success with high probability.</li>
+      <li>For $c > c_k^*$: Failure with high probability.</li>
+    </ul><br>
+    <table class="tl1 tc2 tc3 tc4 tc5 tc6 tc7 fragment">
+      <tr class="midrule">
+        <th>$k$</th>
+        <td>3</td>
+        <td>4</td>
+        <td>5</td>
+        <td>6</td>
+        <!-- <td>7</td> -->
+        <td>$\cdots$</td>
+      </tr>
+      <tr>
+        <td>$c^*_k$</td>
+        <td>0.918</td>
+        <td>0.977</td>
+        <td>0.992</td>
+        <td>0.997</td>
+        <!-- <td>0.999</td> -->
+        <td>$\cdots$</td>
+      </tr>
+    </table>
+  </div>
+</section>
+<section>
+  <!-- <h3>maintaining placements efficiently</h3> -->
+  <div class="fig-container" data-style="height:10em"
+       data-file="figures/cuckooTable.html?pic=random-walk-demo&static=8"></div>
+  <p>Given $m$ keys and $n$ buckets with $\frac{m}{n} < c_k^* - ε$.
+    <ul>
+      <li class="fragment"><i>existence</i> of a placement whp ✓ <span class="cite">PR04,Fot+05,Die+10,FM12,FP10</span>
+      <li class="fragment"><i>constructing</i> a placement in $\mathcal{O}(m)$ ✓ <span class="cite">Kho13</span></li>
+      <li class="fragment">TODO: efficient <i>insertion</i>, i.e. <i>maintaining</i> a placement as keys arrive</li>
+      <!-- <li class="fragment gray">TODO: handle deletions</li> -->
+    </ul>
+  </p>
+</section>
+<section>
+  <h3>Random Walk Insertion</h3>
+  <div class="fig-container" data-style="height:10em"
+       data-file="figures/cuckooTable.html?pic=random-walk-demo"></div>
+  <pre class="python"><code data-line-numbers data-trim>
+def RW($x$):
+  while $x$ != ⊥:
+    sample $i \sim \mathcal{U}$(1,…,k)
+    swap($x, T[h_i(x)]$)
+</code></pre>
+</section>
+<section>
+  <div class="nicebox"><p>Conjecture</p>
+    Let $t_i$ be the number of steps for the $i$-th insertion.<br> If $\frac{i}{n} < c_k^* - ε$ then $𝔼[t_i] = \mathcal{O}(1)$ whp.
+  </div>
+  <!-- <h3>What is known</h3> -->
+  <table class="tr1">
+    <tr class="fragment" data-fragment-index="1">
+      <td><span class="cite">PR04</span></td>
+      <td>$k = 2$: “easy”.</td>
+    </tr>
+    <tr class="fragment"  data-fragment-index="2">
+      <td><span class="cite">Fot+05</span></td>
+      <td>BFS insertion in $\mathcal{O}(1)$.</td>
+    </tr>
+    <tr class="fragment" data-fragment-index="3">
+      <td><span class="cite">FMM11,FPS13</span></td>
+      <td>RW insertion in polylog$(m)$ time whp.</td>
+    </tr>
+    <tr class="fragment" data-fragment-index="4">
+      <td><span class="cite">FJ19</span></td>
+      <td>RW insertion in expected $\mathcal{O}(1)$ time whp<br>
+      when $c = 1-ε$ and $k = Ω(\frac{\log(1/ε)}{ε})$.</td>
+    </tr>
+  </table>
+  <!-- <h3 class="fragment" data-fragment-index="5">a novel imperfect result</h3> -->
+  <div class="fragment nicebox newthm" data-fragment-index="5"><p>Theorem (new)</p>
+    For any $k ≥ 3$ and <span class="fragment highlight-red" data-fragment-index="7">$\frac{m}{n} = c_k^{Δ}-ε$</span>, sequentially inserting <span class="fragment highlight-blue" data-fragment-index="6">$m$</span> keys into a table with $n$ buckets using RW takes expected time <span class="fragment highlight-blue" data-fragment-index="6">$\mathcal{O}(m)$</span> whp.
+  </div>
+  <p>
+    <span class="fragment blue" data-fragment-index="6"> ↪ <i>amortised</i> $\mathcal{O}(1)$ time (in expectation whp)</span><br>
+    <span class="fragment red" data-fragment-index="7">↪ $c_k^{Δ} < c_k^*$</span>
+  </p>
+</section>
+<section>
+  <div class="nicebox" data-fragment-index="14">
+    <p>Thresholds for peeling <span class="cite">Coo04,JL07,Mol05</span> orienting <span class="cite">Die+10,FM12,FP10</span></p>
+    <table class="tl1 tc2 tc3 tc4 tc5 tc6 tc7">
+      <tr class="midrule">
+        <td></td>
+        <th>$k$</th>
+        <td>3</td>
+        <td>4</td>
+        <td>5</td>
+        <td>6</td>
+        <!-- <td>7</td> -->
+        <td>$\cdots$</td>
+      </tr>
+      <tr>
+        <td>peeling threshold</td>
+        <td>$c^△_k$</td>
+        <td>0.818</td>
+        <td>0.772</td>
+        <td>0.702</td>
+        <td>0.637</td>
+        <!-- <td>0.581</td> -->
+        <td>$\cdots$</td>
+      </tr>
+      <tr>
+        <td>orientability threshold</td>
+        <td>$c^*_k$</td>
+        <td>0.918</td>
+        <td>0.977</td>
+        <td>0.992</td>
+        <td>0.997</td>
+        <!-- <td>0.999</td> -->
+        <td>$\cdots$</td>
+      </tr>
+    </table>
+  </div>
+</section>
+<section>
+  <h3>Peeling Process ≈ Greedy <i>offline</i> algorithm</h3>
+  <div class="fig-container"  data-style="height:10em"
+  data-file="figures/cuckooTable.html?pic=peeling-demo&roundBound=4"></div>
+  <script>dummyFragments(13);</script>
+  <!-- <p>Repeatedly “peel” buckets of degree 1.</p> -->
+  <!-- <span class="fragment appear highlight-blue" data-fragment-index="15">a uniformly random </span> -->
+  <!-- <p class="fragment" data-fragment-index="13">Call resulting placement $F$: Keys → Buckets a <i>peeling</i>.</p> -->
+  <!-- <span class="fragment appear highlight-blue" data-fragment-index="15">random </span> -->
+  <div class="fragment nicebox newthm" data-fragment-index="13"><p>Theorem (informal)</p>
+    When the peeling process can place a set of keys (offline) then inserting these keys with RW (in any order) takes $\mathcal{O}(m)$ expected time whp.
+  </div>
+</section>
+<section>
+  <h1>Analysis</h1>
+</section>
+<section>
+  <h3>Amortised how?</h3>
+    <div class="nicebox fragment">
+      <p>Old focus: Insertions</p>
+      $\qquad \ \ \ \ \ t_i := \#$ movements of <b>all keys</b> during the <b>$i$-th insertion</b>
+    </div>
+    <p class="medskip"></p>
+    <div class="nicebox fragment">
+      <p>New focus: Keys</p>
+      $\text{moves}(j) := \#$ movements of <b>key $j$</b> during <b>all insertions</b>
+    </div>
+    <span class="fragment">$$\sum_{i = 1}^m t_i = \sum_{j = 1}^m \text{moves}(j).$$</span>
+</section>
+<section>
+  <h3>Some move-numbers are easy to bound</h3>
+  <div class="fig-container"  data-style="height:10em"
+  data-file="figures/cuckooTable.html?pic=peeling-for-rw-intuition&animWait=0,1"></div>
+  <ul style="list-style-type: none;">
+    <li class="fragment" data-fragment-index="2">
+        🔵 $𝔼[\text{moves}(♣)]$
+        <span class="fragment appear" data-fragment-index="5">$/3$</span>
+        $≤$
+        <span class="fragment fade-out disappear" data-fragment-index="5">$3$</span>
+        <span class="fragment" data-fragment-index="5">$1$</span></li>
+    </li>
+    <li class="fragment" data-fragment-index="4">
+        🟢 $𝔼[\text{moves}(☺)]$
+        <span class="fragment appear" data-fragment-index="5">$/3$</span>
+        $≤$
+        <span class="fragment fade-out disappear" data-fragment-index="5">$6$</span>
+        <span class="fragment" data-fragment-index="5">$2$</span>
+    </li>
+  </ul>
+  <script>dummyFragments(4);</script>
+</section>
+
+<!-- <section>
+  <h3>simple observation for DAGs</h3>
+  <img src="./figures/png/numberOfPathsExample.png" width=50%/>
+  $$p(v) := 1 + \sum_{(v,w) ∈ E} p(w)$$
+  $$⇒ \text{$p(v)$ is the number of paths starting at $v$}$$
+</section> -->
+
+<section>
+  <div style="width:100%">
+    <div class="fig-container" style="width:60%;overflow:visible;float:left" data-style="width:100%;height:12em"
+    data-file="figures/cuckooTable.html?pic=peeling-demo-new"></div>
+    <div style="float:right;height:1em;width:10em"></div>
+    <div class="fig-container" style="width:40%;overflow:visible;float:right" data-style="width:100%;height:10em"
+    data-file="figures/graphs.html?pic=dependence-graph-anim"></div>
+    <!-- <span style="float:right" class="fragment" data-fragment-index="1">number $≈$ moves into designated bucket until safe</span> -->
+  </div>
+  <div style="clear:both" class="fragment nicebox" data-fragment-index="7">
+    <p>Lemma</p>
+    Let $F$ be a peeling <span class="fragment" data-fragment-index="8">and $G_{\text{dep}} = G_{\text{dep}}(F)$.</span><br>
+    <span class="fragment" data-fragment-index="9">The expected number of moves during RW is $\mathcal{O}(\#$ paths in $G_{\text{dep}})$.
+  </div>
+  <p class="medskip"></p>
+  <div class="fragment nicebox" data-fragment-index="10">
+    <p>What's left to show</p>
+    The expected number of paths in $G_{\text{dep}}$ is $\mathcal{O}(m)$.
+  </div>
+  <script>dummyFragments(10);</script>
+</section>
+<section>
+  <h3>Technical Lemmas</h3>
+  <div class="nicebox">
+    <p>Lemmas</p>
+    <p>
+      <!-- Consider peeling below the peeling threshold. -->
+      <ol type="i">
+        <li class="fragment highlight-current-blue" data-fragment-index="1">
+          As long as many keys remain, $≥δn$ buckets have degree $1$.
+        </li>
+        <li class="fragment highlight-current-blue" data-fragment-index="2">
+          In the end most keys are isolated</span>.
+        </li>
+      </ol>
+    </p>
+  </div>
+  <div class="fragment" data-fragment-index="1">
+    <div class="fig-container fragment fade-out hard"  data-style="height:10em"
+    data-file="figures/cuckooTable.html?pic=peeling-demo-full-rounds&seed=2&static=2" data-fragment-index="2"></div>
+    <div class="fig-container fragment fade-in hard"  data-style="height:10em"
+    data-file="figures/cuckooTable.html?pic=peeling-isolated-keys" data-fragment-index="2"></div>
+  </div>
+</section>
+<section>
+  <h3>Idea for an Argument</h3>
+  <img src="./figures/png/intution-path-argument.png" width=70%/>
+  <center>
+    in-degree $≤ k-1$<br>
+    $⇒$ only $m·(k-1)^{1/δ} = \mathcal{O}(m)$ paths outside the “leftover” part
+  </center>
+</section>
+<section class="small">
+  <h3>Summary</h3>
+  <div class="fig-container" data-style="height:6em;width:70%"
+       data-file="figures/cuckooTable.html?pic=random-walk-demo&static=8"></div>
+  <div class="nicebox">
+    <p>This work:</p>
+    <ul>
+      <li>insertions, possibly concurrent</li>
+      <li>$\mathcal{O}(1)$ expected amortised running times</li>
+      <!-- <li>any number $k$ of hash functions</li> -->
+      <li>up to the peeling threshold</li>
+    </ul>
+  </div>
+  <p></p>
+  <div class="nicebox fragment">
+    <p>Future Work?</p>
+    <ul>
+      <li>insertions + deletions</li>
+      <li>$\mathcal{O}(1)$ expected running times</li>
+      <!-- <li>buckets of size $≥ 2$</li> -->
+      <!-- <li>hashing schemes with higher peeling thresholds</li> -->
+      <li><b>up to the orientability threshold!</b></li>
+    </ul>
+  </div>
+  <h4 class="fragment appear">Thanks!</h4>
+</section>
+            </div>
+        </div>
+        <script>
+          d3.selectAll(".fig-container").attr("data-scroll", "no")
+        </script>
+        <script src="dist/reveal.js"></script>
+        <script src="plugin/notes/notes.js"></script>
+        <!-- <script src="plugin/markdown/markdown.js"></script> -->
+        <script src="plugin/highlight/highlight.js"></script>
+        <script src="plugin/math/math.js"></script>
+        <script>
+            Reveal.initialize({
+                hash: true,
+                slideNumber : true,
+                controlsTutorial : false,
+                math: {
+                      mathjax: 'https://cdn.jsdelivr.net/gh/mathjax/mathjax@2.7.8/MathJax.js',
+                      config: 'TeX-AMS_HTML-full',
+                      TeX: { Macros: { RR: "{\\bf R}" } },
+                    },
+                dependencies: [
+                    // {src:'plugin/chalkboard/chalkboard.js'}, // does not work properly
+                    {src:'node_modules/reveald3/reveald3.js'},
+                ],
+                // RevealMarkdown ← not sure how heavy-weight this one is
+                plugins: [ RevealHighlight, RevealNotes, RevealMath ],
+            });
+          </script>
+          <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$']],
+                                         displayMath: [['$$','$$']],
+                                         processEscapes: true,
+                                         skipTags: ["script","noscript","style","textarea"]
+            }});
+        </script>
+    </body>
+</html>

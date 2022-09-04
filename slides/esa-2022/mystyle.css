@@ -1,0 +1,173 @@
+/* change font size */
+.reveal { font-size: 30px; }
+.reveal pre { font-size: 80%; }
+/* latex style descriptions */
+dl.compact > dt, dl.compact > dd { display: block; float: left; margin-top: 20px; }
+dt { clear: both; }
+.red {
+  color : #ff2c2d; /*same as highlight-red*/
+}
+.blue {
+  color: #1b91ff; /* same as highlight-blue */
+}
+.green {
+  color: #17ff2e; /* same as highlight-green */
+}
+.gray {
+  color : #888888;
+}
+.remark {
+  opacity: 0.5;
+  font-size : 70%;
+}
+.new {
+  color : green;
+  font-weight: bold;
+}
+p.negskip {
+  margin-bottom : -30px;
+}
+.left {
+  text-align : left;
+}
+.cite::before {
+  content: "[";
+}
+.cite::after {
+  content: "]";
+}
+.cite {
+  font-size : 80%;
+  /*opacity : 0.7;*/
+  font-variant: small-caps;
+}
+
+.tr1 td:nth-child(1), .tr1 th:nth-child(1),
+.tr2 td:nth-child(2), .tr2 th:nth-child(2),
+.tr3 td:nth-child(3), .tr3 th:nth-child(3),
+.tr4 td:nth-child(4), .tr4 th:nth-child(4),
+.tr5 td:nth-child(5), .tr5 th:nth-child(5),
+.tr6 td:nth-child(6), .tr6 th:nth-child(6),
+.tr7 td:nth-child(7), .tr7 th:nth-child(7),
+.tr8 td:nth-child(8), .tr8 th:nth-child(8),
+.tr9 td:nth-child(9), .tr9 th:nth-child(9) { text-align:right }
+
+.tc1 td:nth-child(1), .tc1 th:nth-child(1),
+.tc2 td:nth-child(2), .tc2 th:nth-child(2),
+.tc3 td:nth-child(3), .tc3 th:nth-child(3),
+.tc4 td:nth-child(4), .tc4 th:nth-child(4),
+.tc5 td:nth-child(5), .tc5 th:nth-child(5),
+.tc6 td:nth-child(6), .tc6 th:nth-child(6),
+.tc7 td:nth-child(7), .tc7 th:nth-child(7),
+.tc8 td:nth-child(8), .tc8 th:nth-child(8),
+.tc9 td:nth-child(9), .tc9 th:nth-child(9) { text-align:center }
+
+/*first row*/
+.reveal table th, .reveal table td {
+  border : none;
+}
+.booktabs tr:first-child th, .booktabs tr:first-child td {
+  border-top : 3px solid #000000;
+}
+/*last row */
+.booktabs tr:last-child th, .booktabs tr:last-child td {
+  /*overrides reveal styles*/
+  border-bottom : 3px solid #000000 !important;
+}
+/* mid rule needed */
+.midrule th, .midrule td {
+  border-bottom : 3px solid #000000 !important;
+}
+
+div.nicebox {
+  background-color: #eeeeee;
+  border: 3px solid #000000;
+  border-radius : 10px;
+  text-align: left;
+  padding : 10px;
+}
+
+table.nopad td {
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  padding-top: 0em;
+  padding-bottom: 0em;
+}
+
+div.nicebox > p:first-child{
+  margin-top: -10px;
+  margin-left: -10px;
+  margin-right: -10px;
+  padding-left : 10px;
+  font-weight: bold;
+  border-color : black;
+  color: white;
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
+  border-style : none none solid none;
+  /*border: 2px solid #000000;*/
+  background-color: blue;
+  margin-bottom : 0px;
+}
+div.nicebox.newthm > p:first-child {
+  background-color: darkgreen;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3,
+.reveal h4,
+.reveal h5,
+.reveal h6 {
+  text-transform: none;
+  font-variant: small-caps;
+}
+.reveal h1 {
+  font-variant: small-caps;
+}
+.reveal h3.larger {
+  font-size : 170%;
+}
+.small {
+  font-size : 80%;
+}
+span.remark, p.remark {
+  font-size : 80%;
+}
+p.subtitle {
+  margin-top: -30px;
+  font-size : 100%;
+}
+
+.fragment.hard {
+  transition: none !important;
+}
+.fragment.hard.fade-out.visible {
+  position:absolute;
+}
+.fragment.hard.fade-in {
+  position:absolute;
+}
+.fragment.hard.fade-in.visible {
+  position:relative;
+}
+.fragment.hard.fade-in-then-out {
+  position:absolute;
+}
+.fragment.hard.fade-in-then-out.current-fragment {
+  position:relative;
+}
+
+/*automatically transitioned*/
+.fragment.appear:not(.visible) {
+    line-height: 0px;
+    font-size: 0px;
+    height: 0px;
+}
+
+/*automatically transitioned*/
+.fragment.disappear.visible {
+    line-height: 0px;
+    font-size: 0px;
+    height: 0px;
+}

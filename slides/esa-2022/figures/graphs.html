@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library of Graphs</title>
+    <meta charset="utf-8"/>
+    <script type="text/javascript" src="./live.js"></script>
+    <script src="./d3.v5.min.js"></script>
+    <script src="./seedrandom.js"></script>
+<style>
+html, body {
+    margin : 0;
+    height:100%;
+    font-size : calc(9vh + 10px);
+}
+#annotations text {
+    dominant-baseline: bottom;
+    font-weight : bold;
+    text-anchor: middle;
+    font-size : 20px;
+}
+#annotations text.in {
+    fill: red;
+}
+#annotations text.out {
+    fill: green;
+}
+.invisible {
+    visibility : hidden;
+}
+
+#nodes g.blue rect {
+    fill : #aaaaff;
+}
+#nodes g.selected circle, line.selected {
+    fill : #ccffcc;
+    stroke : green;
+    stroke-width : 3px;
+}
+#nodes g.irrelevant rect, #nodes g.irrelevant circle {
+    fill : #ffaaaa;
+}
+line.irrelevant {
+    stroke : #ff0000;
+}
+#nodes rect {
+    stroke : black;
+    stroke-width : 2px;
+    fill : #cccccc;
+}
+#nodes .highlight rect {
+    fill : #ccccff;
+}
+#nodes circle {
+    stroke : black;
+    stroke-width : 2px;
+    fill : #dddddd;
+}
+#nodes path {
+    stroke : blue;
+    stroke-width : 2px;
+    fill : none;
+}
+#nodes g.faded rect, #nodes g.faded circle {
+    stroke: #888888;
+    fill : #eeeeee;
+}
+line.faded {
+    stroke : #888888;
+}
+/*description*/
+#nodes text {
+    text-anchor: middle;
+    dominant-baseline:  middle;
+    font-size : 20px;
+}
+/*degree annotation*/
+#nodes text.onArc{
+    fill : blue;
+    font-size : 20px;
+    text-anchor: start;
+    dominant-baseline:  middle;
+}
+line {
+    stroke : black;
+    stroke-width : 2px;
+}
+line.fat {
+    stroke-width : 4px;
+}
+line.directed {
+    marker-end : url(#triangle);
+}
+line.messageLink {
+    stroke : red;
+    stroke-width : 4px;
+}
+line.messageLink.active {
+    stroke : #008800;
+    stroke-width : 2px;
+    marker-end : url(#triangle);
+}
+
+</style>
+</head>
+<!--   BODY -->
+<body>
+<svg width="100%" height="100%">
+    <defs>
+        <marker id="triangle" refX="12" refY="3" markerWidth="15" markerHeight="15" orient="auto-start-reverse">
+                <path d="M 0 0 6 3 0 6 1.5 3 z" style="fill: black; stroke: none;"></path>
+        </marker>
+    </defs>
+    <g id="root">
+        <g id="links"></g>
+        <g id="nodes"></g>
+        <g id="annotations"></g>
+    </g>
+</svg>
+    <script src="./common.js"></script>
+<script>
+const svg = d3.select("body svg");
+let width  = window.innerWidth;
+let height = window.innerHeight;
+let distance = 50;
+let nodeSize = 20;
+let levelHeigth = 100;
+let arcRad = 30;
+let repellentForce = -1500
+function layout() {
+    let eps = 5
+    // scale the picture to fill the screen?
+    d3.select("#root").attr("transform",null);
+    const bBox = svg.node().getBBox();
+    scaleW = width / (bBox.width+eps);
+    scaleH = height / (bBox.height+eps);
+    scale = Math.min(scaleW,scaleH);
+    d3.select("#root").attr("transform",
+          "translate(" + ((width-bBox.width*scale)/2) + "0)"
+       + " scale(" + scale + ")"
+       + " translate(" + (-bBox.x+eps/2) + "," + (-bBox.y+eps/2) + ")");
+}
+var queryDict = {}
+location.search.substr(1).split("&").forEach(function(item) {queryDict[item.split("=")[0]] = item.split("=")[1]});
+
+turnImage = false
+function drawGraph(G) {
+    // establish connections
+    G.links.forEach(e => {e.source = getNode(G,e.S); e.target = getNode(G,e.T)});
+    G.root = G.nodes.find(x => x.root);
+    
+    G.forceSimulation = d3.forceSimulation(G.nodes).alpha(0.5)
+        .force("link", d3.forceLink(G.links).distance(distance).strength(1))
+        .force("charge", d3.forceManyBody().strength(repellentForce)).stop()
+        .force("collide", d3.forceCollide().radius(nodeSize).iterations(10));
+    
+    if (G.root) {
+        /* tree layout
+                * y positions fixed in place
+                * nodes repell each other
+                * links drag on each other */
+        G.nodes[0].fx = width /2;
+        G.nodes.forEach(v => v.fy = (v.level+1) * levelHeigth);
+        
+        // needs a reasonable layout to avoid overlaps:
+        let x = width /2;
+        let prevLevel = 0;
+        G.nodes.forEach((v,i) => {
+            if (v.level > prevLevel) {
+                prevLevel = v.level;
+                x = width /2;
+            } else {
+                x += 200 / ((v.level + 1) || 2);
+            }
+            v.x = x;
+        })
+    } else {
+        /* general graph layout
+            * nodes gravitate to the center
+            * nodes repell each other
+            * links drag on each other */
+        G.forceSimulation.force("center", d3.forceCenter(width / 2, height / 2))
+    }
+    
+    // generate one group per node and one line per link
+    G.nodesSel = svg.select("#nodes").selectAll("g").data(G.nodes.filter(d => !d.dummy)).join("g");
+    G.linksSel = svg.select("#links").selectAll("line").data(G.links).join("line");
+    // nodes represented by rectangles
+    G.nodesSel.filter(d => !d.circle).append("rect")
+        .attr("x",-nodeSize/2)
+        .attr("y",-nodeSize/2)
+        .attr("width", nodeSize)
+        .attr("height",nodeSize);
+    G.nodesSel.filter(d => d.circle).append("circle")
+        .attr("r", 0.7*nodeSize);
+        
+    // node description
+    G.nodesSel.append("text")
+        .text(d => d.displayName);
+        
+    // update
+    G.update = function() {
+        if (turnImage) {
+            G.nodesSel.attr("transform", v => "translate(" + v.y + "," + v.x + ")");
+            G.linksSel.attr("x1",e => e.source.y)
+                             .attr("y1",e => e.source.x)
+                             .attr("x2",e => e.target.y)
+                             .attr("y2",e => e.target.x);
+        } else {
+            G.nodesSel.attr("transform", v => "translate(" + v.x + "," + v.y + ")");
+            G.linksSel.attr("x1",e => e.source.x)
+                             .attr("y1",e => e.source.y)
+                             .attr("x2",e => e.target.x)
+                             .attr("y2",e => e.target.y);
+        }
+        layout();
+    }
+    // compute positions now or continuously
+    if (G.forceSimulationSteps == null) G.forceSimulationSteps = 60;
+    if (G.forceSimulationSteps > 0) {
+            G.forceSimulation.tick(G.forceSimulationSteps);
+            G.update();
+    } else if (G.forceSimulationSteps < 0) {
+        G.forceSimulation.restart().on("tick", G.update);
+    }
+}
+
+function addLabel(G,v,desc,labelDist=15,flip=false) {
+    const group = G.nodesSel.filter(d => d.N == v).append("g");
+    group.append("text").text(desc).attr("x", flip ? -labelDist : labelDist).style("text-anchor", flip ? "end" : "start");
+}
+
+function addArc(G,v,desc="",flip=false) {
+    const arcG = G.nodesSel.filter(d => d == v).append("g");
+    const p = d3.path();
+    down = Math.PI/2;
+    p.arc(0,0,arcRad,down-1.3,down+1.3);
+    arcG.append("path").attr("d",p);
+    arcG.append("text").text(desc).attr("x", flip ? -arcRad : arcRad).classed("onArc", true).style("text-anchor", flip ? "end" : "start");
+}
+
+function showTillLevel(level) {
+    G.nodesSel.classed("invisible", d => d.level > level);
+    G.nodesSel.select("g").classed("invisible", d => d.level + 1 > level);
+    G.linksSel.classed("invisible", l => l.target.level > level);
+}
+
+function getNode(G,name) {
+    return G.nodes.find(x => x.N == name);
+}
+
+function makeTree(degrees) {
+    let nodes = [{N: "r", root : true, level : 0}]
+    let links   = []
+    degrees.forEach((i,j) => {
+        nodes = nodes.concat(d3.range(i).map(k => ({
+            N: nodes[j].N + k,
+            parent : nodes[j],
+            level : nodes[j].level + 1,
+        })));
+        links   = links.concat(d3.range(i).map(k => ({ S: nodes[j].N, T: nodes[j].N + k })));
+    })
+    return { nodes : nodes, links : links };
+}
+
+const variant  = queryDict["pic"] || "gwt";
+var G;
+
+if (variant == "peeling-tree") {
+    G = makeTree([1,3,2,2,2,1,0,3,2,0,1]);
+    G.nodes[0].displayName = "x";
+    G.nodes[1].displayName = "v₁";
+    // G.forceSimulationSteps = -1;
+    G.nodes[0].fx = G.nodes[1].fx = width /2;
+    G.nodes = G.nodes.concat({ N: "a1", level : -1, displayName : "v₂"},{ N: "a2", level : -1, displayName : "v₃"})
+    G.links = G.links.concat({S : "a1", T : "r"},{S : "a2", T : "r"});
+    G.nodes.forEach(v => v.circle = (v.level+1) % 2);
+    repellentForce /= 16;
+    levelHeigth *= 0.7;
+    arcRad *= 0.8;
+    drawGraph(G);
+    addArc(G,G.nodes[1], "~ Po(ck)");
+    addArc(G,G.nodes[4], "k – 1");
+    addArc(G,G.nodes[10], "~ Po(ck)");
+    G.nodesSel.filter(v => v.level < 0).classed("irrelevant",0.5);
+    G.nodesSel.filter(v => v.level == 0).classed("selected",true);
+    G.nodesSel.filter(v => v.level == 1).classed("blue",true);
+    G.linksSel.filter(l => l.source.level < 1).classed("selected",true);
+    G.nodesSel.filter(v => v.level == 4).classed("faded", true);
+    G.linksSel.filter(l => l.target.level == 4).classed("faded", true);
+} else if (variant == "message-passing-advanced") {
+    G = makeTree([4]);
+    G.nodes[0].root = false;
+    G.nodes[0].displayName = "6";
+    G.nodes[0].fy = 200;
+    G.nodes[1].fy = 100;
+    G.nodes[2].fy = 100;
+    G.nodes[3].fy = 200;
+    G.nodes[4].fy = 200;
+    G.nodes.forEach((d,i) => d.dummy = i > 0);
+    // G.forceSimulationSteps = -1;
+    nodeSize = 40
+    drawGraph(G);
+    // G.nodesSel.append("line").attr("y1", nodeSize/6).attr("y2", nodeSize/6).attr("x1",-nodeSize/2).attr("x2",nodeSize/2);
+    // G.nodesSel.append("line").attr("y1", -nodeSize/6).attr("y2", -nodeSize/6).attr("x1",-nodeSize/2).attr("x2",nodeSize/2);
+    // G.nodesSel.append("line").attr("y1",-nodeSize/2).attr("y2",nodeSize/2);
+    G.linksSel.classed("fat", v => v.target.fy == 200);
+    const annot = d3.select("#annotations");
+    const inSel   = annot.append("g");
+    const outSel = annot.append("g");
+    const IN = [1,1,2,3];
+    const OUT = [0,0,1,2];
+    function interpolateLine(l,perc) {
+        return [(1-perc)*l.source.x + perc*l.target.x,
+                    (1-perc)*l.source.y + perc*l.target.y];
+    }
+    inSel.selectAll("text").data(G.links).join("text")
+        .attr("x", l => interpolateLine(l,0.4)[0])
+        .attr("y", l => interpolateLine(l,0.4)[1] - 5)
+        .text((l,i) => IN[i]).classed("in",true);
+    outSel.selectAll("text").data(G.links).join("text")
+        .attr("x", l => interpolateLine(l,0.9)[0])
+        .attr("y", l => interpolateLine(l,0.9)[1] - 5)
+        .text((l,i) => OUT[i]).classed("out",true);
+    
+    function doIt(i) {
+        inSel.classed("invisible",i == 0);
+        outSel.classed("invisible",i <= 1);
+    }
+    
+    var _transitions = fromFrames([
+        () => doIt(0),
+        () => doIt(1),
+        () => doIt(2),
+    ]);
+    // G.linksSel.style("marker-end","url(#triangle)");
+    // G.linksSel.style("marker-start","url(#triangle)");
+}
+else if (variant == "gwt-windowed") {
+    G = makeTree([5,3,2,2,3,3]);
+    // G.forceSimulationSteps = -1;
+    repellentForce /= 7;
+    arcRad *= 0.7;
+    levelHeigth *= 0.7;
+    drawGraph(G);
+    const fatLinks = [0,1,5,8,10,11,12,13,15,16]
+    G.linksSel.classed("fat", (l,i) => fatLinks.includes(i));
+    addArc(G,G.nodes[0], "2 + Po");
+    addArc(G,G.nodes[1], "1 + Po", true);
+    addArc(G,G.nodes[5], "2 + Po");
+    
+    var _transitions = fromFrames([
+            () => showTillLevel(0),
+            () => showTillLevel(1),
+            () => showTillLevel(2),
+        ]);
+} else if (variant == "message-passing-tree") {
+    G = makeTree([1,5]);
+    G.nodes[0].fx = G.nodes[1].fx = width /2;;
+    G.nodes[0].dummy = true;
+    G.nodes.forEach(x => x.displayName = "2");
+    // G.forceSimulationSteps = -1;
+    drawGraph(G);
+    addArc(G,G.nodes[1], "~ Po(2cℓ)");
+    //subdivide nodes
+    // G.nodesSel.append("line").attr("y1",-nodeSize/2).attr("y2",nodeSize/2);
+    function activate(array) {
+        G.linksSel.classed("messageLink",true).classed("active",(l,i) => array[i]);
+    }
+    activate([0,1,0,1,1,0]);
+} else if (variant == "message-passing") {
+    G = { nodes : [
+            { N: "A"}, { N: "D"}, { N: "B"}, { N: "C"},
+            { N: "B1", dummy : true}, { N: "B2", dummy : true}, { N: "B3", dummy : true}, { N: "B4", dummy : true},{ N: "B5", dummy : true},
+        ],
+        links : [
+            { S : "B5", T : "D" },
+            { S : "C", T : "D" },
+            { S : "B", T : "C" }, { S : "A", T : "C" },
+            { S : "A", T : "B" }, 
+            { S : "A", T : "B1" }, { S : "A", T : "B2" },
+            { S : "B", T : "B3" }, { S : "B", T : "B4" },
+        ]
+    }
+    // G.forceSimulationSteps = -1;
+    G.nodes.forEach(x => x.displayName = "2"); // capacity
+    drawGraph(G);
+    //subdivide nodes
+    // G.nodesSel.append("line").attr("y1",-nodeSize/2).attr("y2",nodeSize/2);
+    function activate(array) {
+        G.linksSel.classed("messageLink",true).classed("active",(l,i) => array[i]);
+    }
+    var _transitions = fromFrames([
+                () => activate([0,0,0,0,0,0,0,0,0]),
+                () => activate([1,1,0,0,0,0,0,0,0]),
+                () => activate([1,1,1,1,0,0,0,0,0]),
+        ]);
+} else if (variant == "gwt") {
+    G = makeTree([4,2,0,4,3])
+    getNode(G,"r").displayName = "v"
+    // getNode(G,"r3").displayName = "w"
+    // G.forceSimulationSteps = -1;
+    repellentForce /= 7;
+    arcRad *= 0.7;
+    levelHeigth /= 2;
+    drawGraph(G);
+    G.nodesSel.classed("highlight", v => v.level == 0);
+
+    addArc(G,G.nodes[0], "~ Poisson");
+    addArc(G,G.nodes[1], "");
+    addArc(G,G.nodes[2], "");
+    addArc(G,G.nodes[3], "");
+    addArc(G,G.nodes[4], "~ Poisson");  
+
+    var _transitions = fromFrames([
+                () => showTillLevel(0),
+                () => showTillLevel(1),
+                () => showTillLevel(2),
+            ]);
+} else if (variant == "random-walk-tree") {
+    G = makeTree([1,2,2,2]);
+    [0,2,3].forEach(j => G.nodes[j].circle = true);
+    G.nodes[1].fx = width/2
+    G.nodes = G.nodes.concat(["L","R"].map(name => ({
+            N: name,
+            parent : 0,
+            level : -1,
+    })));
+    G.links = G.links.concat(["L","R"].map(k => ({ S: k, T: "r" })));
+    ["♡","","♣","♪"].forEach((desc,i) =>
+        G.nodes[i].displayName = desc);
+    // distance = 50;
+    nodeSize = 20;
+    repellentForce /= 10
+    // levelHeigth = 60;
+    turnImage = true;
+    drawGraph(G);
+    [[1,"F(♡)"],[4,"F(♣)"],[7,"F(♪)"]].map(pair => 
+        G.nodesSel.filter(d => d == G.nodes[pair[0]])
+            .append("g").append("text").attr("y", 1.1*nodeSize).text(pair[1])
+    )
+    G.nodesSel.filter(d => d == G.nodes[0])
+        .append("g").append("text").attr("y", 3*nodeSize).text("D(♡) = {♣,♪}");
+    G.nodesSel.filter(d => [G.nodes[8], G.nodes[9]].includes(d))
+        .append("g").append("text").attr("x", -1.5*nodeSize).text("···");
+    G.nodesSel.filter(d => [4,5,6,7].map(i => G.nodes[i]).includes(d))
+        .append("g").append("text").attr("x", 1.5*nodeSize).text("···");
+    G.linksSel.classed("fat",x => x.S == "r" && x.T == "r0" || x.S == "r00" && x.T == "r001" || x.S == "r01" && x.T == "r011")
+} else if (variant == "dependence-graph") {
+    G = { nodes : ["♡","♣","△","☆","♘","☺"].map(x => Object({ N : x, displayName: x, circle : true})),
+        links :  [
+            ["♡","☆"],
+            ["♡","☺"],
+            ["♣","♡"],
+            ["♘","♣"],
+            ["♘","☆"],
+            ["△","♘"],
+            ["△","♡"]].map(pair => Object({ S : pair[0], T : pair[1] }))
+    }
+    drawGraph(G);
+    G.linksSel.classed("directed",true);
+} else if (variant == "dependence-graph-anim") {
+    let scale = 50
+    G = { nodes : [
+                ["☺",2,0],
+                ["☆",0,0],
+                ["♡",1,1],
+                ["♣",1.2,2],
+                ["♘",2,3],
+                ["△",0,4],
+            ].map(x => Object({
+                N : x[0], displayName: x[0], circle : true,
+                fx : scale*x[1], fy : -scale*x[2]})),
+        links :  [
+            ["♡","☆"],
+            ["♡","☺"],
+            ["♣","♡"],
+            ["♘","♣"],
+            ["♘","☺"],
+            ["△","♘"],
+            ["△","♡"]].map(pair => Object({ S : pair[0], T : pair[1] }))
+    }
+    drawGraph(G);
+    addLabel(G,"♡","3")
+    addLabel(G,"♣", "4")
+    addLabel(G,"△", "10")
+    addLabel(G,"☆", "1")
+    addLabel(G,"♘", "6")
+    addLabel(G,"☺", "1")
+    G.linksSel.classed("directed",true);
+
+    function makeFrame(i) {
+        G.nodesSel.classed("invisible", d => d.index >= i);
+        G.linksSel.classed("invisible", l => G.nodes.find(n => n.N == l.S).index >= i);
+    }
+
+    var _transitions = fromFrames(
+        d3.range(G.nodes.length+1).map(i => (() => makeFrame(i)))
+    );
+}
+processOptions();
+layout();
+</script>
+</body>

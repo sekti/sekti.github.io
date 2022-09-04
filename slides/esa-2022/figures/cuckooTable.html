@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library of Cuckoo Table Figures</title>
+    <meta charset="utf-8"/>
+    <script type="text/javascript" src="./live.js"></script>
+    <script src="./d3.v5.min.js"></script>
+    <script src="./seedrandom.js"></script>
+    <style>
+
+/*.tick text {
+    font-size: 100%;
+}*/
+#intervalPhantoms path {
+    fill : green;
+    opacity : 0.2;
+}
+#intervalPhantoms path.dim {
+    opacity : 0.04;
+}
+input {
+    width: 35%;
+}
+
+body {
+    margin : 0;
+    font-size : calc(9vh + 10px);
+}
+path {
+    fill: none;
+    stroke : black;
+    stroke-width : 2px;
+}
+#bucket{
+    fill : #cccccc;
+    stroke : black;
+    stroke-width : 2px;
+}
+#keys {
+    fill : #dddddd;
+    stroke : black;
+    stroke-width : 2px;
+}
+#keys .faded {
+    fill : #eeeeee;
+}
+#helperEdges path{
+    stroke-width : 5px;
+    stroke  : blue;
+}
+#connections {
+    stroke : black;
+    stroke-width : 2px;
+}
+#bucketContents .unplaced {
+    opacity : 0;
+    transition : opacity 0.3s;
+}
+#keyNames .peeled {
+    opacity : 0;
+    transition : opacity 0.3s;
+}
+#keys .peeled {
+    opacity : 0;
+    transition : opacity 0.3s;
+}
+#bucket .peeled {
+    fill : darkgrey;
+    transition : fill 0.3s;
+}
+#connections .peeled {
+    opacity : 0;
+    transition : opacity 0.3s;
+}
+#keyNames, #bucketContents {
+    dominant-baseline : middle;
+    text-anchor : middle;
+}
+.bucketSubdivision {
+    stroke-width : 1.0px;
+    stroke : gray;
+}
+.faded {
+    stroke-opacity : 0.5;
+}
+text.faded {
+    fill-opacity : 0.3;
+}
+text.hl1, text.hl2 {
+    visibility : visible;
+}
+.visible {
+    visibility: visible;
+}
+.invisible {
+    visibility: hidden;
+}
+#bucketGroups {
+    fill : None;
+    stroke : black;
+    stroke-width : 4px;
+}
+line {
+    transition: stroke-width 0.5s ease-in-out, stroke 0.5s ease-in-out;
+}
+line.orientation {
+    stroke-width : 5px;
+    marker-end : url(#triangle);
+}
+/* HIGHLIGHTS */
+path.hl1 { stroke: blue; stroke-width: 3px; }
+path.hl2 { stroke: green; stroke-width: 3px; }
+line.hl1, circle.hl1 { visibility : visible; fill : #ccccff; stroke : blue; stroke-width : 3px; 
+    transition : all 0.5s ease-in-out;}
+rect.hl1 { fill : #aaaaff; }
+line.hl2, circle.hl2 { visibility : visible; fill : #ccffcc; stroke : green; stroke-width : 3px; }
+rect.hl2 { fill : #aaffaa; }
+line.hl1.hl2, circle.hl1.hl2 { visibility : visible; fill : #44ffff; stroke : turquoise; stroke-width : 3px; }
+rect.hl1.hl2 { fill : #44ffff; }
+rect.hl4 { fill : #0000dd; }
+rect.hl8 { fill : #dd0000; }
+
+rect.hlframe { stroke : red; stroke-width: 5px; fill : none; }
+    </style>
+</head>
+<!--   BODY -->
+<body>
+<svg>
+    <g id="root" transform="scale(1 1)">
+        <g id="bucket"></g>
+        <g id="connections"></g>
+        <g id="keys"></g>
+        <g id="keyNames"></g>
+        <g id="bucketGroups"></g>
+        <g id="bucketContents"></g>
+    </g>
+</svg>
+    <script src="./common.js"></script>
+    <script>
+// Interpret Parameters
+var queryDict = {}
+location.search.substr(1).split("&").forEach(function(item) {queryDict[item.split("=")[0]] = item.split("=")[1]});
+
+// Layout constants
+const width  = window.innerWidth-10; //some space to prevent scroll bars
+let height = window.innerHeight-10;
+const svg = d3.select("body svg");
+const svgroot = svg.select("#root");
+svg .attr("width", width)
+    .attr("height", height);
+const bucketHeight = 0.15*height;
+const minKeyDisplayRad = 7;
+const maxKeyDisplayRad = Math.min(0.1*height,30);
+const margin =  10;
+var keyY; // depends on key radius, set in cuckooGraph
+
+let bucketY = height - bucketHeight - margin;
+
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "triangle")
+    .attr("refX", 6)
+    .attr("refY", 3)
+    .attr("markerWidth", 15)
+    .attr("markerHeight", 15)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M 0 0 6 3 0 6 1.5 3 z")
+    .style("fill", "black")
+    .style("stroke","none");
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "double-triangle")
+    .attr("refX", 12)
+    .attr("refY", 3)
+    .attr("markerWidth", 15)
+    .attr("markerHeight", 15)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M 6 0 12 3 6 6 7.5 3 z M 0 0 6 3 0 6 1.5 3 z")
+    .style("fill", "black")
+    .style("stroke","none");
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "triangle-blue")
+    .attr("refX", 3)
+    .attr("refY", 1.5)
+    .attr("markerWidth", 15)
+    .attr("markerHeight", 15)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M 0 0 3 1.5 0 3 0.75 1.5 z")
+    .style("fill", "blue")
+    .style("stroke","none");
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "double-triangle-blue")
+    .attr("refX", 6)
+    .attr("refY", 1.5)
+    .attr("markerWidth", 15)
+    .attr("markerHeight", 15)
+    .attr("orient", "auto-start-reverse")
+    .append("path")
+    .attr("d", "M 3 0 6 1.5 3 3 3.75 1.5 z M 0 0 3 1.5 0 3 0.75 1.5 z")
+    .style("fill", "blue")
+    .style("stroke","none");
+svg.append("svg:defs").append("svg:marker")
+    .attr("id", "circle")
+    .attr("refX", 3)
+    .attr("refY", 3)
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("circle")
+    .attr("cx", "3")
+    .attr("cy", "3")
+    .attr("r", "3")
+    .style("fill", "black")
+    .style("stroke","none");
+// #################
+// Util
+// #################
+
+function desiredKeyPosition(G, buckets) {
+    return buckets.map(i => G.bucketScale(i))
+        .reduce((a,b) => a+b,0) / buckets.length + 0.5*G.bucketScale.bandwidth();
+}
+
+// #################
+// Graph Generation
+// #################
+function cuckooGraph(G) {
+    // generate missing values
+    Math.seedrandom(G.seed || 0);
+    if (G.resetHasher) G.resetHasher();
+    if (G.m == null) { G.m = Math.floor(G.c*G.n) }
+    if (!G.c) { G.c = G.m/G.n}
+    if (!G.hashingScheme) { G.hashingScheme = randomDistinctNodes }
+    
+    const keyRad = 0.25*(width-2*margin)/(G.max_m || G.m);
+    const keyDisplayRad = Math.min(Math.max(keyRad,minKeyDisplayRad),maxKeyDisplayRad);
+    keyY   =  keyDisplayRad + margin;
+    
+    G.buckets = d3.range(G.n).map(i => ({ index : i }));
+    G.bucketScale = d3.scaleBand()
+        .domain(d3.range(G.n))
+        .range([0,width]);
+    if (G.isolateBuckets) {
+        let bucketWidth = Math.min(width / 1.7 / G.n, 2*bucketHeight);
+        const innerP = 1 - bucketWidth*G.n / width;
+        G.bucketScale.paddingInner(innerP)
+                                .paddingOuter(innerP/2 + margin/width*G.n);
+    } else {
+        G.bucketScale.paddingOuter(margin/width*G.n);
+    }
+    
+    // Draw bucket
+    G.bucketSel = d3.select("#bucket").selectAll("rect")
+        .data(G.buckets)
+        .join("rect")
+        .attr("x", b => G.bucketScale(b.index))
+        .attr("y", bucketY)
+        .attr("height", bucketHeight)
+        .attr("width", G.bucketScale.bandwidth());
+    
+    // generate hashes
+    const oldKeys = G.keys
+    G.keys = d3.range(G.m).map(_ => G.hashingScheme()).map((buckets,i) => 
+        ({x  : desiredKeyPosition(G, buckets),
+          desiredX : desiredKeyPosition(G, buckets),
+          y  : keyY, fy : keyY,
+          buckets : buckets,
+          index : i
+    }));
+    if (oldKeys)
+        oldKeys.forEach((k,i) => {if (i < G.m) G.keys[i].x = k.x; });
+    
+    // draw keys
+    if (G.keysAsArcs) {
+        G.connections = d3.select("#connections")
+            .selectAll("path")
+            .data(G.keys).join("path")
+            .attr("d", k => {
+                const p = d3.path();
+                const xpos = k.buckets.map(i => G.bucketScale(i) + 0.5*G.bucketScale.bandwidth());
+                p.moveTo(xpos[0],bucketY);
+                const cx = (xpos[0] + xpos[1])/2
+                const cy = bucketY - 1.5*height / width * Math.abs(xpos[0]-xpos[1]);
+                p.quadraticCurveTo(cx,cy,xpos[1],bucketY);
+                return p;
+            });
+    } else {
+        G.keySel = d3.select("#keys")
+            .selectAll("circle")
+            .data(G.keys).join(
+                enter => enter.append("circle")
+                                        .attr("cx", e => e.x)
+                                        
+            )
+            .attr("cy", keyY)
+            .attr("r", keyDisplayRad);
+        
+        // create connections to bucket cells
+        G.connections = d3.select("#connections")
+            .selectAll("g")
+            .data(G.keys).join("g")
+            .selectAll("line")
+            .data(e => e.buckets.map(i => e))
+            .join(
+                enter => enter
+                    .append("line")
+                    .attr("y2", bucketY)
+            )
+            .attr("x1", e => e.x)
+            .attr("y1", keyY)
+            .attr("x2", (e,i) => G.bucketScale(e.buckets[i])
+                + 0.5*G.bucketScale.bandwidth());
+        
+        // key Decorations
+        if (G.keyNames) {
+            G.keys.forEach((k,i) => k.keyName = G.keyNames[i] || "x");
+            G.keyNamesSel = d3.select("#keyNames")
+                .selectAll("text")
+                .data(G.keys).join("text")
+                .attr("x", k => k.x)
+                .attr("y", keyY)
+                .text(k => k.keyName);
+        }
+        
+        // keys repell each other, generates nice layout
+        G.forceSimulation = d3.forceSimulation(G.keys)
+            .force("X",d3.forceX(e => e.desiredX))
+            .force("COL", d3.forceCollide().radius(1.7*keyRad))
+            .alphaDecay(0.5).stop();
+        
+        function applyChanges() {
+            G.connections.attr("x1", e => e.x);
+            G.keySel.attr("cx", e => e.x);
+            if (G.keyNames)
+                G.keyNamesSel.attr("x", k => k.x);
+        }
+        
+        if (G.forceSimulationSteps == null) G.forceSimulationSteps = 60;
+        if (G.forceSimulationSteps >= 0) {
+            G.forceSimulation.tick(G.forceSimulationSteps);
+            applyChanges();
+        } else {
+            G.forceSimulation.alphaDecay(0.05)
+            G.forceSimulation.restart().on("tick", applyChanges);
+        }
+    }
+    
+    
+    // bucket decorations
+    
+    if (G.bucketContents) {
+            G.bucketContentsSel = d3.select("#bucketContents")
+            .selectAll("text")
+            .data(G.buckets).join("text")
+            .attr("x", (b,i) => G.bucketScale(i) + 0.5*G.bucketScale.bandwidth())
+            .attr("y", bucketY + 0.6*bucketHeight)
+            .text((b,i) => G.bucketContents[i] == null ? " " : G.bucketContents[i]);
+    }
+}
+
+var fadeNonHighlighted = true;
+function updateKeyHighlights(G) {
+    const fade = G.keys.some(k => k.highlight) && fadeNonHighlighted;
+    if (!G.keysAsArcs) G.keySel
+        .classed("hl1", k => k.highlight & 1)
+        .classed("hl2", k => k.highlight & 2)
+        .classed("faded", k => fade && !k.highlight);
+    G.connections
+        .classed("hl1", e => e.highlight & 1)
+        .classed("hl2", e => e.highlight & 2)
+        .classed("faded", e => fade && !e.highlight);
+    if (G.keyNamesSel) {
+        G.keyNamesSel
+        .classed("hl1", k => k.highlight & 1)
+        .classed("hl2", k => k.highlight & 2)
+        .classed("faded", k => fade && !k.highlight);
+    }
+}
+function highlightKeys(G,indices,highlight = 1) {
+    indices.forEach(i => G.keys[i].highlight = highlight);
+    updateKeyHighlights(G);
+}
+function highlightKeysAndBuckets(G,indices,highlight = 1) {
+    indices.forEach(i => {
+        G.keys[i].highlight = highlight
+        if (!highlight) {
+            G.keys[i].buckets.forEach(j => G.buckets[j].highlight = 0);
+        } else {
+            G.keys[i].buckets.forEach(j => G.buckets[j].highlight |= highlight);
+        }
+    });
+    updateKeyHighlights(G);
+    updateBucketHighlights(G);
+}
+function updateBucketHighlights(G) {
+    G.bucketSel
+        .classed("hl1", b => b.highlight & 1)
+        .classed("hl2", b => b.highlight & 2)
+        .classed("hl4", b => b.highlight & 4)
+        .classed("hl8", b => b.highlight & 8)
+        .classed("faded", b => b.removed);
+}
+function highlightBuckets(G,indices,highlight = 1) {
+    indices.forEach(i => G.buckets[i].highlight = highlight);
+    updateBucketHighlights(G);
+}
+function removeHighlights(G) {
+    G.buckets.forEach(b => b.highlight = null);
+    G.keys.forEach(k => k.highlight = null);
+    updateBucketHighlights(G);
+    updateKeyHighlights(G);
+}
+
+function subdivideBuckets(G) {
+    const inBucketScale = d3.scaleLinear([0,G.bucketScale.bandwidth()]);
+    const container = d3.select("#bucketContents");
+    d3.range(G.n).forEach(i => d3.range(1,G.l).forEach(j => {
+        container.append("line")
+            .attr("x1", G.bucketScale(i) + inBucketScale(j/G.l))
+            .attr("y1", bucketY)
+            .attr("x2", G.bucketScale(i) + inBucketScale(j/G.l))
+            .attr("y2", bucketY + bucketHeight)
+            .classed("bucketSubdivision",true)
+    }));
+}
+function showCellGrouping(G) {
+    if (!G.l || G.n % G.l != 0) {
+        throw "Bad group size G.l";
+        return;
+    }
+    d3.select("#bucketGroups").selectAll("rect")
+        .data(d3.range(G.n / G.l))
+        .join("rect")
+        .attr("x", i => G.bucketScale(G.l * i))
+        .attr("y", bucketY)
+        .attr("height", bucketHeight)
+        .attr("width", G.bucketScale.step()*(G.l-1)+G.bucketScale.bandwidth());
+}
+function fadeOuterBuckets(G, num=4) {
+    G.bucketSel.attr("stroke-opacity", (b,i) => {
+        i = Math.min(i,G.n-i-1);
+        if (i < num) return (i+0.5)/num;
+        return 1.0;
+    });
+}
+
+const coolKeyNames = ["♡","♣","△","☆","♘","☺","☼","♪","☏","⚠","♯","♀"];
+const variant  = queryDict["pic"];
+var G;
+//#####################################################################
+//#####################################################################
+//                      VARIANTS
+//#####################################################################
+//#####################################################################
+if (variant == "spatial-coupling") {
+    G = {
+        n : 100,
+        m : 1,
+        max_m : 100, // use this for scaling keys
+        k : 3,
+        z : 5,
+        hashingScheme : spatialCoupling,
+        seed : 0,
+        forceSimulationSteps : 0
+    }
+    
+    //keep space for axis
+    bucketY -= 2*bucketHeight;
+    cuckooGraph(G);
+    const zScale = d3.scaleLinear()
+                                .domain([0,G.z+1])
+                                .range([G.bucketScale(0),G.bucketScale(G.n-1)+G.bucketScale.bandwidth()])
+    var zAxis = d3.axisBottom(zScale).ticks(G.z+1).tickSize(0.4*bucketHeight);
+    var axisSel = svgroot.append("g")
+        .attr("transform", "translate(0," + (bucketY + 1.5*bucketHeight) + ")")
+        .call(zAxis).attr("font-size",null);
+    
+    const phantoms = svgroot.insert("g",":first-child").attr("id","intervalPhantoms");
+    function redraw() {
+        spatialCouplingCentres = [];
+        cuckooGraph(G);
+        //draw keys on their positions
+        G.keySel.attr("cx",k => zScale(spatialCouplingCentres[k.index])).classed("invisible",false);
+        G.connections.attr("x1", k => zScale(spatialCouplingCentres[k.index])).classed("invisible",false);
+        G.intervals = phantoms.selectAll("path").data(G.keys).join("path")
+            .attr("d", (k,i) => {
+                const c = spatialCouplingCentres[i];
+                const p = d3.path();
+                p.moveTo(zScale(c),keyY);
+                p.lineTo(zScale(c-0.5),bucketY);
+                p.lineTo(zScale(c+0.5),bucketY);
+                p.closePath();
+                return p;
+            }).classed("invisible",false).classed("dim", false);
+            removeHighlights(G);
+    }
+    var _transitions = fromFrames([
+            () => { G.m = 0; redraw(); },
+            () => { G.m = 1; redraw();
+                      G.connections.classed("invisible",true); },
+            () => { G.m = 1; redraw(); },
+            () => { G.m = 2; redraw(); },
+            () => { G.m = G.n * 0.8; redraw();
+                G.connections.classed("invisible", false);
+                G.keySel.classed("invisible", false);
+                G.intervals.classed("invisible", false).classed("dim", false);
+            },
+            () => { G.m = G.n * 3; redraw();
+                const midPos = (G.z+1) / 2;
+                const endPos = G.z+0.8;
+                function isClose(key) {
+                    const x = spatialCouplingCentres[key.index];
+                    return Math.abs(x - midPos) < 0.5 || Math.abs(x- endPos) < 0.5;
+                }
+                G.connections.classed("invisible", true);
+                G.keySel.classed("invisible", true); //k => !isClose(k));
+                G.intervals.classed("invisible", k => !isClose(k)).classed("dim", true);
+                const hls = [midPos,endPos].map(x => Math.floor(x * G.n / (G.z+1)));
+                highlightBuckets(G,[hls[0]],4);
+                highlightBuckets(G,[hls[1]],8);
+            },
+        ]);
+    
+} else if (variant == "spatial-coupling-eps") {
+    G = {
+        n : 100,
+        m : 1,
+        max_m : 100, // use this for scaling keys
+        k : 3,
+        z : 5,
+        hashingScheme : spatialCoupling,
+        seed : 0,
+        forceSimulationSteps : 0
+    }
+    
+    //keep space for axis
+    bucketY -= 2*bucketHeight;
+    cuckooGraph(G);
+    const zScale = d3.scaleLinear()
+                                .domain([0,G.z+1])
+                                .range([G.bucketScale(0),G.bucketScale(G.n-1)+G.bucketScale.bandwidth()])
+    var zAxis = d3.axisBottom(zScale).tickValues([0,G.z+1]).tickFormat(x => x ? "n" : "0").tickSize(0.4*bucketHeight);
+    var axisSel = svgroot.append("g")
+        .attr("transform", "translate(0," + (bucketY + 1.5*bucketHeight) + ")")
+        .call(zAxis).attr("font-size",null);
+    
+    const phantoms = svgroot.insert("g",":first-child").attr("id","intervalPhantoms");
+    const lengthMarkers = svgroot.insert("g",":first-child").attr("id","lengthMarkers");
+    const epsilons = svgroot.insert("g",":first-child").attr("id","epsilons");
+    function redraw() {
+        spatialCouplingCentres = [];
+        cuckooGraph(G);
+        //draw keys on their positions
+        G.keySel.attr("cx",k => zScale(spatialCouplingCentres[k.index])).classed("invisible",false);
+        G.connections.attr("x1", k => zScale(spatialCouplingCentres[k.index])).classed("invisible",false);
+        G.intervals = phantoms.selectAll("path").data(G.keys).join("path")
+            .attr("d", (k,i) => {
+                const c = spatialCouplingCentres[i];
+                const p = d3.path();
+                p.moveTo(zScale(c),keyY);
+                p.lineTo(zScale(c-0.5),bucketY);
+                p.lineTo(zScale(c+0.5),bucketY);
+                p.closePath();
+                return p;
+            }).classed("invisible",false).classed("dim", false);
+        G.lengthMarkers = lengthMarkers.selectAll("path").data(G.keys).join("path")
+            .attr("d", (k,i) => {
+                const c = spatialCouplingCentres[i];
+                const p = d3.path();
+                p.moveTo(zScale(c-0.5),bucketY+ 2*bucketHeight);
+                p.lineTo(zScale(c-0.5),bucketY+ 2*bucketHeight+5);
+                p.lineTo(zScale(c+0.5),bucketY+ 2*bucketHeight+5);
+                p.lineTo(zScale(c+0.5),bucketY+ 2*bucketHeight);
+                // p.closePath();
+                return p;
+            })
+            .classed("invisible",G.m > 2);
+        G.epsilons = epsilons.selectAll("text").data(G.keys).join("text")
+        .attr("x", (k,i) => zScale(spatialCouplingCentres[i])-10)
+        .attr("y", bucketY+ 2*bucketHeight+10)
+        .text("w")
+        .style("dominant-baseline", "Hanging")
+        .classed("invisible",G.m > 2);
+
+        removeHighlights(G);
+    }
+    var _transitions = fromFrames([
+            () => { G.m = 0; redraw(); },
+            () => { G.m = 1; redraw();
+                      G.connections.classed("invisible",true); },
+            () => { G.m = 1; redraw(); },
+            () => { G.m = 2; redraw(); },
+            () => { G.m = G.n * 0.8; redraw();
+                G.connections.classed("invisible", false);
+                G.keySel.classed("invisible", false);
+                G.intervals.classed("invisible", false).classed("dim", false);
+            },
+            () => { G.m = G.n * 3; redraw();
+                const midPos = (G.z+1) / 2;
+                const endPos = G.z+0.8;
+                const startPos = 0.2;
+                function isClose(key) {
+                    const x = spatialCouplingCentres[key.index];
+                    return Math.abs(x - midPos) < 0.5 || Math.abs(x- endPos) < 0.5 ||
+                        Math.abs(x- startPos) < 0.5;
+                }
+                G.connections.classed("invisible", true);
+                G.keySel.classed("invisible", true); //k => !isClose(k));
+                G.intervals.classed("invisible", k => !isClose(k)).classed("dim", true);
+                const hls = [midPos,endPos,startPos].map(x => Math.floor(x * G.n / (G.z+1)));
+                highlightBuckets(G,[hls[0]],4);
+                highlightBuckets(G,[hls[1],hls[2]],8);
+            },
+        ]);
+    
+}
+
+ else if (variant == "peeling-probabilities") {
+    G = {
+        n : 15,
+        k : 3,
+        m : 10,
+        seed : 0,
+        keyNames : coolKeyNames,
+    }
+    cuckooGraph(G);
+    highlightKeys(G,[1],2);
+    highlightBuckets(G,[3],4);
+    highlightBuckets(G,[7],8);
+    highlightBuckets(G,[13],8);
+} else if (variant == "peeling-isolated-keys") {
+    G = {
+        n : 15,
+        k : 3,
+        m : 4,
+        max_m : 10,
+        hashingScheme : hardcodedHashes([[1,3,4],[3,4,8],[5,6,9],[7,11,14]]),
+        keyNames : coolKeyNames,
+    }
+    cuckooGraph(G);
+    highlightKeys(G,[2,3]);
+} else if (variant == "peeling-demo-full-rounds") {
+    G = {
+        n : 15,
+        k : 3,
+        m : 10,
+        seed : queryDict["seed"] || 0,
+        keyNames : coolKeyNames,
+    }
+    cuckooGraph(G);
+    var round;
+    function peelRound() {
+        round = 0;
+        for(;;) {
+            const degrees = d3.range(G.n).fill(0);
+            const keysLeft = G.keys.filter(k => !k.peeled);
+            const bucketsLeft = G.buckets.filter(b => !b.peeled);
+            keysLeft.forEach(k => k.buckets.forEach(b => degrees[b]++));
+            const leavingBuckets = bucketsLeft.filter(b => degrees[b.index] <= 1);
+            const leavingBucketsIndices = leavingBuckets.map(b => b.index);
+            const leavingKeys = keysLeft.filter(k => k.buckets.some(b => leavingBucketsIndices.includes(b)));
+            leavingBuckets.forEach(b => {
+                b.leaveAfter = round;
+                b.peeled = true;
+            });
+            leavingKeys.forEach(k => {
+                k.leaveAfter = round;
+                k.peeled = true;
+                k.targetBucket = k.buckets.find(b => leavingBucketsIndices.includes(b));
+            });
+            round++;
+            if (leavingKeys.length == 0) break;
+        }
+    }
+    peelRound();
+    G.bucketContents = d3.range(G.n).fill(null);
+    G.keys.forEach((k,i) => G.bucketContents[k.targetBucket] = G.keyNames[i]);
+    cuckooGraph(G);
+    peelRound();
+    
+    const START = 0;
+    const HIGHLIGHT = 1;
+    const POPULATE = 2;
+    const anim = d3.range(round).map(r => d3.range(3).map(s => ({ r : r, subStep: s }))).flat();
+    anim.push({r : round, subStep : 0}); // first frame of next round
+    
+    function showStep(round,subStep) {
+        G.bucketSel.classed("peeled", b => round > b.leaveAfter);
+        G.bucketSel.classed("hl1", b => round == b.leaveAfter && subStep > START);
+        G.keySel.classed("hl1", k => round == k.leaveAfter && subStep > START);
+        G.connections.classed("hl1", (k,i) => round == k.leaveAfter && subStep > START && k.targetBucket == k.buckets[i]);
+        G.keySel.classed("peeled", k => round > k.leaveAfter);
+        G.keyNamesSel.classed("peeled", k => round > k.leaveAfter);
+        G.connections.classed("peeled", k => round > k.leaveAfter);
+        G.bucketContentsSel.classed("unplaced", b => (round <= b.leaveAfter && (round != b.leaveAfter || subStep < POPULATE)));
+    }
+    var _transitions = fromFrames(anim.map(d => (() => showStep(d.r,d.subStep))));
+} else if (variant == "peeling-demo") {
+    G = {
+        n : 15,
+        k : 3,
+        m : 10,
+        seed : 0,
+        keyNames : coolKeyNames,
+    }
+    cuckooGraph(G);
+    var round;
+    function peelRound() {
+        round = 0;
+        bound = queryDict["roundBound"];
+        if (!bound) bound = 100;
+        for(;round < bound;) {
+            const degrees = d3.range(G.n).fill(0);
+            const keysLeft = G.keys.filter(k => !k.peeled);
+            const bucketsLeft = G.buckets.filter(b => !b.peeled);
+            keysLeft.forEach(k => k.buckets.forEach(b => degrees[b]++));
+            const bucketCandidates = bucketsLeft.filter(b => degrees[b.index] == 1);
+            if (bucketCandidates.length == 0) break;
+            const leavingBucket = bucketCandidates[113 % bucketCandidates.length];
+            console.log("round "+round)
+            console.log(leavingBucket)
+            console.log(keysLeft)
+            const leavingBucketIndex = leavingBucket.index;
+            console.log(leavingBucketIndex)
+            const leavingKey = keysLeft.find(k => k.buckets.includes(leavingBucketIndex));
+            leavingBucket.leaveAfter = round;
+            leavingBucket.peeled = true;
+            leavingKey.leaveAfter = round;
+            leavingKey.peeled = true;
+            leavingKey.targetBucket = leavingBucketIndex;
+            round++;
+        }
+    }
+    peelRound();
+    G.bucketContents = d3.range(G.n).fill(null);
+    G.keys.forEach((k,i) => G.bucketContents[k.targetBucket] = G.keyNames[i]);
+    cuckooGraph(G);
+    peelRound();
+    
+    const START = 0;
+    const HIGHLIGHT = 1;
+    const POPULATE = 2;
+    const anim = d3.range(round).map(r => d3.range(3).map(s => ({ r : r, subStep: s }))).flat();
+    anim.push({r : round, subStep : 0}); // first frame of next round
+    
+    function showStep(round,subStep) {
+        G.bucketSel.classed("peeled", b => round > b.leaveAfter);
+        G.bucketSel.classed("hl1", b => round == b.leaveAfter && subStep > START);
+        G.keySel.classed("hl1", k => round == k.leaveAfter && subStep > START);
+        G.connections.classed("hl1", (k,i) => round == k.leaveAfter && subStep > START && k.targetBucket == k.buckets[i]);
+        G.keySel.classed("peeled", k => round > k.leaveAfter);
+        G.keyNamesSel.classed("peeled", k => round > k.leaveAfter);
+        G.connections.classed("peeled", k => round > k.leaveAfter);
+        G.bucketContentsSel.classed("unplaced", b => (round <= b.leaveAfter && (round != b.leaveAfter || subStep < POPULATE)));
+    }
+    var _transitions = fromFrames(anim.map(d => (() => showStep(d.r,d.subStep))));
+} else if (variant == "peeling-for-rw-intuition") {
+    G = {
+        n : 10,
+        k : 3,
+        m : 7,
+        seed : 0,
+        keyNames : coolKeyNames,
+    }
+    cuckooGraph(G);
+
+    function update(i) {
+        removeHighlights(G);
+        if (i >= 1) {
+            highlightBuckets(G,[2],1);
+            highlightKeys(G,[1],1);
+        }
+        if (i >= 2) {
+            highlightBuckets(G,[6],2);
+            highlightKeys(G,[5],2);
+        }
+        G.connections
+            .classed("hl2", (e,i) => G.buckets[e.buckets[i]].highlight == 2)
+            .classed("hl1", (e,i) => G.buckets[e.buckets[i]].highlight == 1);
+    }
+
+    frames = [
+            () => { update(0) },
+            () => { update(1) },
+            () => { update(2) },
+    ]
+
+    var _transitions = fromFrames(frames);
+} else if (variant == "retrieval-one-block-subset") {
+    G = {
+        n : 30,
+        k : 1,
+        l : 7,
+        m : 15,
+        seed : 14,
+        hashingScheme : unalignedBlockSubset,
+        forceSimulationSteps : -1,
+    }
+    cuckooGraph(G);
+    function update(m) {
+        G.m = m;
+        cuckooGraph(G);
+        highlightKeysAndBuckets(G,[0],1);
+        if (m > 1) highlightKeysAndBuckets(G,[1],2);
+    }
+    frames = [
+            () => { update(1) },
+            () => { update(2) },
+            () => { update(15) },
+    ]
+    var _transitions = fromFrames(frames);
+} else if (variant == "retrieval-block-subsets-with-entries") {
+    G = {
+        n : 24,
+        k : 2,
+        l : 4,
+        m : 1,
+        bucketContents : [0,1,1,1, 0,1,0,0, 0,1,1,0, 1,0,1,1, 1,1,0,0, 1,0,0,1],
+        seed : 0,
+        hashingScheme : blockedSubset,
+        forceSimulationSteps : -1,
+    }
+    cuckooGraph(G);
+    showCellGrouping(G);
+    highlightKeysAndBuckets(G,[0],1);
+} else if (variant == "retrieval-block-subsets") {
+    G = {
+        n : 24,
+        k : 2,
+        l : 4,
+        m : 6,
+        seed : 0,
+        hashingScheme : blockedSubset,
+        forceSimulationSteps : -1,
+    }
+    cuckooGraph(G);
+    showCellGrouping(G);
+    function update(m) {
+        G.m = m;
+        cuckooGraph(G);
+        highlightKeysAndBuckets(G,[0],1);
+        if (m > 1) highlightKeysAndBuckets(G,[1],2);
+    }
+    frames = [
+            () => { update(1) },
+            () => { update(2) },
+            () => { update(6) },
+    ]
+    var _transitions = fromFrames(frames);
+} else if (variant == "retrieval-blocked") {
+    G = {
+        n : 24,
+        k : 2,
+        l : 4,
+        m : 6,
+        seed : 0,
+        hashingScheme : blockedIgnoreSubset,
+    }
+    cuckooGraph(G);
+    showCellGrouping(G);
+    highlightKeysAndBuckets(G,[0],1);
+    highlightKeysAndBuckets(G,[1],2);
+} else if (variant == "retrieval-intro") {
+    let retrievalExample_n = 15;
+    G = {
+        n : 15,
+        m : 0,
+        k : 3,
+        keyNames : coolKeyNames,
+        seed : 0,
+        resetHasher : () => { G.hashingScheme = hardcodedHashes([[4,7,10],[2,4,12],[6,8,13],[2,4,7],[1,8,9]]) },
+        forceSimulationSteps : -1
+    }
+    const subscripts = ["₀","₁","₂","₃","₄","₅","₆","₇","₈","₉"]
+    function makeSubscript(i) {
+        if (!i) return "₀";
+        let r = "";
+        for(; i; i = Math.floor(i/10)) {
+            r = subscripts[(i % 10)] + r;
+        }
+        return r;
+    }
+    function makeStep(step) {
+        if (!queryDict["emptyBuckets"]) {
+            if (step <= 2) G.bucketContents = [1,3,5,7,2,7,0,6,2,4,3,1,1,3,6,7];
+            else G.bucketContents = d3.range(G.n).map(i => "x" + makeSubscript(i));
+        }
+        if (step == 1) {
+            G.m = 0;
+            cuckooGraph(G);
+        } else if (step == 2) {
+            G.m = 1;
+            cuckooGraph(G);
+        } else if (step >= 3) {
+            if (step == 3) G.m = 1;
+            if (step == 4) G.m = 2;
+            if (step >= 5) G.m = 5;
+            cuckooGraph(G);
+        }
+        removeHighlights(G);
+        if (G.m > 0) highlightKeysAndBuckets(G,[0],1);
+        if (G.m > 1) highlightKeysAndBuckets(G,[1],2);
+    }
+    var _transitions = fromFrames(d3.range(5).map(i => () => makeStep(i+1)));
+} else if (variant == "dysect") {
+    G = {
+        n : 16, // Knoten pro Zeile
+        N : 16, // tatsächlcihe Knotenzahl
+        k : 3,
+        l : 1,
+        c : 0.6,
+        forceSimulationSteps : 30
+    }
+    sliderSpace = 0.2*height;
+    height -= sliderSpace;
+    bucketY -= sliderSpace;
+    svg.attr("height",height);
+    cuckooGraph(G);
+    const div = d3.select("body").append("div").classed("slidecontainer",true);
+    const nspan = div.append("span");
+    const ndisp = nspan.append("span").attr("style","display:inline-block;width:12%");
+    var nSlider = nspan.append("input")
+             .attr("type","range")
+             .attr("min", G.n)
+             .attr("max", 2*G.n)
+             .attr("value", G.n);
+    const mspan = div.append("span");
+    const mdisp = mspan.append("span").attr("style","display:inline-block;width:12%");
+    var mSlider = mspan.append("input")
+             .attr("type","range")
+             .attr("min", 0)
+             .attr("max", 2*G.n)
+             .attr("value", G.m);
+    const randomBits = d3.range(+mSlider.attr("max")).map(i => d3.range(G.k).map(j => Math.random() > 0.5));
+    function handleChange() {
+        cuckooGraph(G);
+        G.connections.attr("marker-end", "url(#circle)");
+        // draw clones
+        d3.select("#bucket").selectAll("rect.clone")
+            .data(d3.range(G.N-G.n)).join("rect").classed("clone",true)
+            .attr("x", i => G.bucketScale(i))
+            .attr("y", bucketY-bucketHeight)
+            .attr("height", bucketHeight)
+            .attr("width", G.bucketScale.bandwidth());
+        const t = d3.transition().duration(200);
+        G.connections.transition(t).attr("y2", (e,i) =>{
+                if (randomBits[e.index][i]) return bucketY + bucketHeight/2;
+                if (G.N - G.n <= e.buckets[i]) return bucketY + bucketHeight/2;
+                return bucketY - bucketHeight/2;
+        });
+        ndisp.text("n = " + G.N);
+        mdisp.text("m = " + G.m);
+    }
+    mSlider.on("input", function() {
+        G.m = +this.value; handleChange();
+    });
+    nSlider.on("input", function() {
+        G.N = +this.value; handleChange();
+    });
+    handleChange();
+} else if (variant == "simplify-aligned") {
+    const step = queryDict["step"];
+    let hashes = [[3,7],[1,6],[2,5],[3,4],[4,8]];
+    if (step == 1) {
+        hashes = hashes.map(list => list.map(i => [i-1,i,i+1]).flat());
+    }
+    G = {
+        n : 10,
+        m : step == 3 ? 5 : 1,
+        k : 2,
+        l : 3,
+        seed : 0,
+        hashingScheme : hardcodedHashes(hashes),
+        isolateBuckets : step >= 2,
+        keysAsArcs : step >= 3,
+    }
+    cuckooGraph(G);
+    fadeOuterBuckets(G);
+    if (step >= 2) {
+        subdivideBuckets(G);
+        G.l = 1; // for putRect
+    }
+    if (step <= 2) {
+        var rectPos = null;
+        const rect = d3.select("#bucketContents").append("rect").classed("hlframe",true);
+        function putRect(i) {
+                var t = d3.transition().duration(rectPos ? 500 : 0);
+                rectPos = i;
+                if (rectPos) {
+                    rect.transition(t)
+                           .attr("opacity", 1)
+                           .attr("x", G.bucketScale(i))
+                           .attr("y", bucketY)
+                           .attr("height", bucketHeight)
+                           .attr("width", G.bucketScale.step()*(G.l-1)+G.bucketScale.bandwidth());
+                } else {
+                    rect.transition(t).attr("opacity", 0);
+                }
+        }
+        const first = step == 1 ? 2 : 3;
+        putRect(first);
+        var _transitions = [{
+                transitionForward: () => { putRect(first+1); },
+                transitionBackward: () => { putRect(first); }
+        },{
+                transitionForward: () => { putRect(first+2); },
+        },{
+                transitionForward: () => { putRect(first+3); },
+        },{
+                transitionForward: () => { putRect(null);
+                    if (step == 1) {
+                        highlightBuckets(G,[first],1);
+                        highlightBuckets(G,[first+1,first+2],3);
+                        highlightBuckets(G,[first+3],2);
+                    } else {
+                        highlightBuckets(G,[first],1);
+                        highlightBuckets(G,[first+1],2);
+                    }
+                },
+                transitionBackward: () => {
+                    removeHighlights(G);
+                    putRect(first+3);
+                }
+        },{
+                transitionForward: () => {
+                    // removeHighlights(G);
+                    G.hashingScheme = hardcodedHashes(hashes);
+                    G.m = 5;
+                    cuckooGraph(G);
+                },
+                transitionBackward: () => {
+                    G.hashingScheme = hardcodedHashes(hashes);
+                    G.m = 1;
+                    cuckooGraph(G);
+                }
+        }];
+    } else { /* step == 3 */
+        // helper edges
+        const helpers = svgroot.insert("g","#bucket").attr("id", "helperEdges").selectAll("path")
+            .data(G.buckets).join("path")
+            .attr("d", (b,i) => {
+                const p = d3.path();
+                const s = G.bucketScale;
+                const y = bucketY + 0.5*bucketHeight;
+                p.moveTo(s(i) - s.step()+s.bandwidth(),y);
+                p.lineTo(s(i) + s.step(),y);
+                return p;
+            });
+        // [3,7],[1,6],[2,5],[3,4],[4,8]
+        const orientation = [1,0,1,0,0]
+        function drawOrientation() {
+            G.connections
+                // .attr("marker-start", "url(#triangle)");
+                .attr("marker-start", (k,i) => orientation[i] ? "url(#triangle)" : "")
+                .attr("marker-end", (k,i) => !orientation[i] ? "url(#triangle)" : "");
+            const helperO = [0,1,2,1,1,0,1,0,1,0,2]
+            helpers.attr("marker-start", (b,i) => { switch(helperO[i]){
+                case 0 : return "";
+                case 1 : return "url(#triangle-blue)";
+                case 2 : return "url(#double-triangle-blue)";
+            }})
+            .attr("marker-end", (b,i) => { switch(2-helperO[i+1]){
+                case 0 : return "";
+                case 1 : return "url(#triangle-blue)";
+                case 2 : return "url(#double-triangle-blue)";
+            }})
+        }
+        function removeOrientation() {
+            G.connections.attr("marker-start",null)
+                         .attr("marker-end",null);
+            helpers.attr("marker-start",null)
+                   .attr("marker-end",null);
+        }
+        
+        var _transitions = [{
+            transitionForward: () => {
+                drawOrientation();
+            },
+            transitionBackward: () => {
+                removeOrientation();
+            },
+        }]
+    }
+} else if (variant == "unaligned") {
+    G = {
+        n : 21,
+        k : 2,
+        l : 3,
+        c : 0.6,
+        seed : 2,
+        hashingScheme : unalignedBlocks
+    }
+    cuckooGraph(G);
+    highlightKeysAndBuckets(G,[0],1);
+    var _transitions = [{
+            transitionForward: () => { highlightKeysAndBuckets(G,[1],2); },
+            transitionBackward: () => {
+                highlightKeysAndBuckets(G,[1],0);
+                highlightKeysAndBuckets(G,[0],1);
+            },
+    },]
+} else if (["buckets","blocked","simplified"].includes(variant)) {
+    G = {
+        n : 21,
+        k : 2,
+        l : 3,
+        c : 0.6,
+        seed : 0,
+        hashingScheme : blockedHashing,
+        keysAsArcs : variant == "simplified"
+    }
+    if (variant == "blocked") {
+        cuckooGraph(G);
+        showCellGrouping(G);
+    } else { // variant == "buckets" or "simplified"
+        G.isolateBuckets = true;
+        G.n /= G.l;
+        G.c *= G.l;
+        G.hashingScheme = randomDistinctNodes;
+        cuckooGraph(G);
+        subdivideBuckets(G);
+    }
+    if (queryDict["lwl"]) {
+        highlightBuckets(G,[4],1);
+    } else {
+        highlightKeysAndBuckets(G,[0],1);
+        highlightKeysAndBuckets(G,[1],2);
+    }
+} else if (variant == "double-hashing") {
+    G = {
+        n : 19,
+        k : 3,
+        c : 0.6,
+        seed : 11,
+        hashingScheme : doubleHashing
+    }
+    bucketY -= bucketHeight;
+    cuckooGraph(G);
+    highlightKeysAndBuckets(G,[0],1);
+    G.keys[0].buckets.map(i => d3.select("#bucketContents").append("text")
+        .attr("x", G.bucketScale(i) + G.bucketScale.bandwidth() * 0.5)
+        .attr("y", bucketY + bucketHeight)
+        .text(i)
+        .style("dominant-baseline", "Hanging")
+    )
+    // highlightKeysAndBuckets(G,[2],2);
+} else if (variant == "k-ary") {
+    G = {
+        n : 20,
+        k : 4,
+        c : 0.8,
+        seed : 2
+    }
+    cuckooGraph(G);
+    highlightKeys(G,[0]);
+    
+    // note: highlighting overrides invisibility 
+    // need inline style attribute to override this again
+    G.connections.style("visibility", (e,i) => i >= queryDict["k"] ? "hidden" : "visible");
+} else if (variant == "overful") {
+    // ############################################
+    // ##  cuckoo graph with overful substructure
+    // ############################################
+    G = {
+        n : 12,
+        k : 3,
+        c : 8/12,
+        keyNames : coolKeyNames,
+        seed : 0
+    }
+    const hashes = [
+        [6,7,9],
+        [4,7,9],
+        [4,6,9],
+        [4,6,7],
+        [4,6,7],
+        
+        [1,3,5],
+        [1,2,4],
+        [9,10,11]
+    ]
+    var counter = 0;
+    G.hashingScheme = () => {
+        return hashes[counter++];
+    }
+    cuckooGraph(G);
+    highlightKeysAndBuckets(G,[0,1,2,3,4],1);
+} else if (variant == "cuckooIntro") {
+    // ############################################
+    // ##  Introduction to Cuckoo Hashing
+    // ############################################
+    G = {
+        n : 10,
+        k : 3,
+        c : 0.6,
+        keyNames : coolKeyNames,
+        seed : 0
+    }
+
+
+    function makeFrame(i) {
+        const orientation = [ 5, 8, 1, 7, 9, 6 ];
+        G.bucketContents = d3.range(G.n*G.c).map(_ => null);
+        if (i >= 1 && i < 6) {
+            d3.range(G.n).map(b => G.bucketContents[b] = "" + b);
+        } else if (i >= 6) {
+            orientation.forEach((bucket,i) =>
+                G.bucketContents[bucket] = G.keyNames[i]);
+        }
+        cuckooGraph(G);
+
+        const bucks     = d3.select("#bucket");
+        const cons      = d3.select("#connections");
+        const fcons     = cons.selectAll("g").select("line");
+        const bConts    = d3.select("#bucketContents");
+
+        bConts.attr("opacity", i >= 6 ? 1 : 0.3);
+
+        bucks.classed("invisible", i == 0);
+        fcons.classed("visible",i >= 2);
+        cons.classed("invisible",i <= 2);
+        removeHighlights(G);
+        i == 4 && highlightKeysAndBuckets(G,[0]);
+        G.connections.classed("orientation", (e,j) =>
+            (i >= 5 && e.buckets[j] == orientation[e.index])
+        );
+
+        G.keySel.classed("invisible",i >= 7);
+        G.keyNamesSel.classed("invisible",i >= 7);
+        if (i >= 7) {
+            cons.classed("invisible",true);
+            fcons.classed("visible", false);
+        }
+        i == 8 && highlightKeysAndBuckets(G,[0]);
+    }
+    var _transitions = fromFrames(d3.range(9).map(i => (() => makeFrame(i))));
+}
+else if (variant == "random-walk-demo") {
+    hashes = [[2,5,8],[0,2,4],[6,8,9],[3,5,9],[4,6,8],[1,4,5]]
+    G = {
+        n : 10,
+        m : 6,
+        k : 3,
+        c : 0.6,
+        keyNames : coolKeyNames,
+        seed : 0
+    }
+    
+    fadeNonHighlighted = false;
+    function makeFrame(i) {
+        const orientation = [8,4,6,9,-1,-1];
+        
+        function put(key,pos) {
+            const i = orientation.indexOf(pos);
+            i == -1 || (orientation[i] = -1);
+            orientation[key] = pos;
+        }
+        
+        if (i >= 2) { put(4,6); }
+        if (i >= 3) { put(2,9); }
+        if (i >= 4) { put(3,5); }
+        if (i >= 6) { put(5,5); }
+        if (i >= 7) { put(3,5); }
+        if (i >= 8) { put(5,1); }
+        
+        G.bucketContents = d3.range(G.n).map(_ => "⊥");
+        orientation.forEach((bucket,j) =>
+                    G.bucketContents[bucket] = G.keyNames[j]);
+        
+        G.hashingScheme = hardcodedHashes(hashes);
+        cuckooGraph(G);
+        
+        unplaced = [-1,4,2,3,-1,5,3,5,-1,-1,-1,-1];
+        removeHighlights(G);
+        unplaced[i] == -1 || highlightKeys(G,[unplaced[i]]);
+        
+        G.connections.classed("orientation", (e,j) =>
+            (e.buckets[j] == orientation[e.index])
+        );
+        
+        // make key invisible that has not arrived
+        function visible(key,frame) {
+            return key <= 3
+                || key == 4 && i >= 1
+                || key == 5 && i >= 5;
+        }
+        G.keyNamesSel.classed("invisible", (_,id) => !visible(id,i));
+        G.keySel     .classed("invisible", (_,id) => !visible(id,i));
+        G.connections.classed("invisible", key => !visible(key.index,i));
+    }
+    var _transitions = fromFrames(d3.range(9).map(i => (() => makeFrame(i))));
+} else if (variant == "peeling-demo-new") {
+    hashes = [[2,5,8],[0,2,4],[6,8,9],[3,5,9],[4,6,8],[1,4,5]]
+    G = {
+        n : 10,
+        m : 6,
+        k : 3,
+        c : 0.6,
+        keyNames : coolKeyNames,
+        seed : 0
+    }
+    
+    function makeFrame(i) {
+        console.log(i)
+        const coolKeyNames = ["♡","♣","△","☆","♘","☺","☼","♪","☏","⚠","♯","♀"];
+        const orientation = [-1,-1,-1,-1,-1,-1];
+        
+        function put(key,pos) {
+            const i = orientation.indexOf(pos);
+            i == -1 || (orientation[i] = -1);
+            orientation[key] = pos;
+        }
+        
+        placements = [[5,1],[3,3],[0,5],[1,2],[4,4],[2,8]];
+        d3.range(i).map(j => put(placements[j][0],placements[j][1]))
+        
+        G.bucketContents = d3.range(G.n).map(_ => "");
+        orientation.forEach((bucket,j) =>
+                    G.bucketContents[bucket] = G.keyNames[j]);
+        
+        G.hashingScheme = hardcodedHashes(hashes);
+        cuckooGraph(G);
+        
+        removeHighlights(G);
+        highlightKeys(G,placements.slice(i).map(p => p[0]),4);
+        
+        G.connections.classed("orientation", (e,j) =>
+            (e.buckets[j] == orientation[e.index])
+        );
+    }
+    var _transitions = fromFrames(d3.range(7).map(i => (() => makeFrame(i))));
+} else {
+    G = {
+        n : 10,
+        k : 3,
+        c : 0.6,
+        keyNames : coolKeyNames,
+        seed : 0
+    }
+    cuckooGraph(G);
+    d3.select("body").append("h1").text("No valid pic parameter specified.");
+}
+
+processOptions();
+    </script>
+</body>
+</html>

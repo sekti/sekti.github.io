@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library of Plots</title>
+    <meta charset="utf-8"/>
+    <script type="text/javascript" src="./live.js"></script>
+    <script src="./d3.v5.min.js"></script>
+    <script src="./seedrandom.js"></script>
+    <script src="./../exp/rw_exp_data.js"></script>
+    <style>
+html, body {
+    margin : 0;
+    height:100%;
+    font-size : calc(6vh + 4px);
+}
+.invisible {
+    visibility: hidden;
+}
+.tick {
+    font-size: 80%;
+}
+.modified {
+    animation : modifiedAnim 1s linear forwards;
+}
+#areas {
+    fill : #ddddff;
+}
+#areas .peelingExp {
+    fill : #ddffdd;
+    stroke : black;
+    stroke-width : 1px;
+}
+#areas .peelingExp.overlay{
+    fill-opacity : 0.05;
+    fill : #88ff88;
+    stroke : black;
+    stroke-width : 1px;
+}
+@keyframes modifiedAnim {
+    0% { opacity : 0; font-size: 200%;}
+    100% { opacity : 1; }
+}
+input {
+    width : 45vw;
+}
+#functions path {
+    stroke: black;
+    fill : none;
+    stroke-width : 2px;
+}
+#functions path:nth-child(2).highlight { stroke : red; }
+#functions path:nth-child(3).highlight { stroke : blue; }
+#functions path:nth-child(4).highlight { stroke : violet; }
+
+#xlabel {
+    text-anchor : middle;
+}
+#ylabel {
+    text-anchor : start;
+}
+    </style>
+</head>
+<body>
+    <svg width="100%" height="100%">
+        <g id="areas"></g>
+        <g id="functions"></g>
+        <g id="axes">
+            <g id="xaxis"></g>
+            <g id="yaxis"></g>
+        </g>
+        <g id="labels">
+            <text id="xlabel"></text>
+            <text id="ylabel"></text>
+        </g>
+    </svg>
+    <script src="./common.js"></script>
+    <script>
+// Interpret Parameters
+var queryDict = {}
+location.search.substr(1).split("&").forEach(function(item) {queryDict[item.split("=")[0]] = item.split("=")[1]});
+
+const TICK_SIZE = 10;
+const svg = d3.select("body svg");
+let width  = window.innerWidth-30; //some space to prevent scroll bars
+let height = window.innerHeight - 30;
+let xlabelOffset = -height*0.07;
+let margin, BL, TR;
+function computeLayout() {
+    BL = [width*0.15,0.85*height];
+    TR = [width*0.95,0.15*height];
+}
+computeLayout();
+
+function makeAxis(P) {
+    if (!P.svg) P.svg = svg;
+    if (!P.minX) P.minX = 0;
+    if (!P.minY) P.minY = 0;
+    if (!P.maxX) P.maxX = 1;
+    if (!P.maxY) P.maxY = 1;
+    if (!P.xTicks) P.xTicks = 1;
+    if (!P.yTicks) P.yTicks = 1;
+    P.X = (P.useLogScaleX ? d3.scaleLog() : d3.scaleLinear()).domain([P.minX,P.maxX]).range([BL[0],TR[0]]);
+    P.Y = (P.useLogScaleY ? d3.scaleLog() : d3.scaleLinear()).domain([P.minY,P.maxY]).range([BL[1],TR[1]]);
+    
+    P.xAxis = d3.axisBottom(P.X).ticks(P.xTicks).tickSize(TICK_SIZE);
+    P.yAxis = d3.axisLeft(P.Y).ticks(P.yTicks).tickSize(TICK_SIZE);
+    
+    P.xAxisSel = P.svg.select("#xaxis").call(P.xAxis).attr("transform", "translate(0," + P.Y(P.minY) + ")").attr("font-size",null);
+    P.yAxisSel = P.svg.select("#yaxis").call(P.yAxis).attr("transform", "translate(" + P.X(P.minX) + ",0)").attr("font-size",null);
+    
+    if (!P.fun)
+        P.fun = P.svg.select("#functions").append("path");
+    
+    P.xlabel = P.svg.select("#xlabel").attr("x",P.X(P.maxX/2)).attr("y",P.Y(P.minY)-xlabelOffset);
+    P.ylabel = P.svg.select("#ylabel").attr("x",P.X(0.05)).attr("y",P.Y(P.maxY) - 10);
+}
+
+function symbolicXTicks(P,dict) {
+    if (dict == null) {
+        P.xAxis.tickValues(null).tickFormat(null);
+    } else {
+        P.xAxis.tickValues(Object.keys(dict))
+                    .tickFormat(x => dict[x]);
+    }
+    P.xAxisSel.call(P.xAxis);
+}
+// ########################
+//  UTIL
+// ########################
+function plot(P,f,resolution=500) {
+    return data = d3.range(resolution+1).map(i => i / resolution)
+        .map(x => [P.X(x),P.Y(f(x))]);
+}
+function discretePlot(P,data) {
+    return data.map(p => [P.X(p[0]),P.Y(p[1])]);
+}
+function plotLine(P,f,resolution=500) {
+    return d3.line()(plot(P,f,resolution));
+}
+function plotDiscreteLine(P,data) {
+    return d3.line()(discretePlot(P,data));
+}
+function showFun(P,f,resolution=500) {
+    P.fun.attr("d",plotLine(P,f,resolution));
+}
+function morphFun(P,f,resolution=500) {
+    P.fun.transition().attr("d",plotLine(P,f,resolution));
+}
+function addFun(P,f,resolution=500) {
+    return P.svg.select("#functions").append("path").attr("d",plotLine(P,f,resolution));
+}
+function addDiscreteFun(P,data) {
+    return P.svg.select("#functions").append("path").attr("d",plotDiscreteLine(P,data));
+}
+
+function addAxisLabels(P,xlabel,ylabel) {
+    P.xlabel.text(xlabel);
+    P.ylabel.text(ylabel);
+}
+// ########################
+// Function Library
+// ########################
+function sigmoid(x) {
+    return 1/(1+Math.exp(-x));
+}
+function thresholdLike(threshold,strength) {
+    return x => sigmoid(strength*(threshold-x));
+}
+function f(x) {
+    return x**2;
+}
+
+function makeSlider() {
+    height *= 0.8;
+    svg.attr("height", "75%");
+    computeLayout();
+    return d3.select("body").append("p").style("margin", 0).style("padding-left", "10%");
+}
+        
+const variant  = queryDict["pic"];
+var P;
+//#####################################################################
+//#####################################################################
+//                      VARIANTS
+//#####################################################################
+//#####################################################################
+if (variant == "peeling-experiment") {
+    const resolution = peelingExperimentData[0].length;
+    peelingExperimentData.unshift(Array(resolution).fill(1));
+    
+    /* transform data to fit what I explained earlier */
+    const transRes = 1000;
+    var el1l = d3.range(10*transRes+2)
+        .map(i => i/transRes)
+        .map(x => Math.exp(-x)*(1+x));
+    function toLamb(p) {
+        return el1l.findIndex(pp => pp < 1-p) / transRes;
+    }
+    function translate(p) {
+        if (p == 1) return 1;
+        let l = toLamb(p)
+        return 1-Math.exp(-l);
+    }
+    peelingExperimentData = peelingExperimentData.map(
+        dataset => dataset.map(translate)
+    );
+    
+    
+    const rounds = peelingExperimentData.length;
+    const z = 7;
+    P = {
+        maxX : z+1,
+        xTicks : z+1
+    }
+    
+    let sliderPar = makeSlider();
+    makeAxis(P);
+    
+    let r = 0;
+    
+    const areas = svg.select("#areas").selectAll("path")
+        .data(peelingExperimentData).join("path")
+        .attr("d", roundData => {
+                const coords = roundData.map((y,i) => 
+                    [P.X(i*(z+1)/resolution), P.Y(y)]
+                );
+                coords.push([P.X(z+1),P.Y(0)]);
+                coords.unshift([P.X(0),P.Y(0)]);
+                return d3.line()(coords);
+            }
+        ).classed("peelingExp",true);
+    
+    var rSlider = sliderPar.append("input")
+             .attr("type","range")
+             .attr("min", 0)
+             .attr("max", rounds)
+             .attr("value", r);
+    var rShower = sliderPar.append("span").text("r = " + r);
+    sliderPar.append("span").style("margin-left","1em").text("(k = 3, c = 0.85, z = 7, n = 10⁸)")
+    function update() {
+        if (r == rounds) {
+            areas.classed("invisible", false).classed("overlay",true);
+            rShower.text("all rounds");
+        } else {
+            areas.classed("invisible", (d,i) => i != r).classed("overlay",false);
+            rShower.text("r = " + r);
+        }
+    }
+    rSlider.on("input", function() {
+        r = +this.value;
+        update();
+    });
+    update();
+    addAxisLabels(P,"bucket position","probability pᵣ at that position")
+    symbolicXTicks(P,{0:0,8:"z+1"});
+    
+} else if (variant == "peeling-experiment-eps") {
+    const resolution = peelingExperimentData[0].length;
+    peelingExperimentData.unshift(Array(resolution).fill(1));
+    
+    /* transform data to fit what I explained earlier */
+    const transRes = 1000;
+    var el1l = d3.range(10*transRes+2)
+        .map(i => i/transRes)
+        .map(x => Math.exp(-x)*(1+x));
+    function toLamb(p) {
+        return el1l.findIndex(pp => pp < 1-p) / transRes;
+    }
+    function translate(p) {
+        if (p == 1) return 1;
+        let l = toLamb(p)
+        return 1-Math.exp(-l);
+    }
+    peelingExperimentData = peelingExperimentData.map(
+        dataset => dataset.map(translate)
+    );
+    
+    
+    const rounds = peelingExperimentData.length;
+    const z = 7;
+    P = {
+        maxX : z+1,
+        xTicks : z+1
+    }
+    
+    let sliderPar = makeSlider();
+    makeAxis(P);
+    
+    let r = 0;
+    
+    const areas = svg.select("#areas").selectAll("path")
+        .data(peelingExperimentData).join("path")
+        .attr("d", roundData => {
+                const coords = roundData.map((y,i) => 
+                    [P.X(i*(z+1)/resolution), P.Y(y)]
+                );
+                coords.push([P.X(z+1),P.Y(0)]);
+                coords.unshift([P.X(0),P.Y(0)]);
+                return d3.line()(coords);
+            }
+        ).classed("peelingExp",true);
+    
+    var rSlider = sliderPar.append("input")
+             .attr("type","range")
+             .attr("min", 0)
+             .attr("max", rounds)
+             .attr("value", r);
+    var rShower = sliderPar.append("span").text("r = " + r);
+    sliderPar.append("span").style("margin-left","1em").text("(k = 3, c = 0.85, ε = 1/8, n = 10⁸)")
+    function update() {
+        if (r == rounds) {
+            areas.classed("invisible", false).classed("overlay",true);
+            rShower.text("all rounds");
+        } else {
+            areas.classed("invisible", (d,i) => i != r).classed("overlay",false);
+            rShower.text("r = " + r);
+        }
+    }
+    rSlider.on("input", function() {
+        r = +this.value;
+        update();
+    });
+    update();
+    if (queryDict["lang"] == "en") {
+        addAxisLabels(P,"← Buckets →","„survival probability“ of bucket")
+    } else {
+        addAxisLabels(P,"← Behälter →","„Überlebenswahrscheinlichkeit“ des Behälters")
+    }
+    symbolicXTicks(P,{0:0,8:"n"});
+    
+} else if (variant == "threshold-phenomenon") {
+    P = { };
+    makeAxis(P);
+    const cstar = 0.8;
+    fun1 = thresholdLike(cstar,20);
+    fun2 = thresholdLike(cstar,100);
+    fun3 = thresholdLike(cstar,400);
+    showFun(P,fun1);
+    function standardLabels() { addAxisLabels(P,"#keys","success probability")}
+    function normalisedLabels() { addAxisLabels(P,"load factor","success probability")}
+    const area = svg.select("#areas").append("path");
+    function showArea(P,fun) {
+        const areaData = plot(P,fun).concat([[P.X(1),P.Y(0)],[P.X(0),P.Y(0)]]);
+        area.transition().attr("d", d3.line()(areaData));
+    }
+    function updateFun(P,fun) {
+        morphFun(P,fun);
+        showArea(P,fun);
+    }
+    var _transitions = fromFrames([
+        () => { updateFun(P,fun1); symbolicXTicks(P,{0:0,1:"n"}); standardLabels(); },
+        () => { updateFun(P,fun1); symbolicXTicks(P,null); normalisedLabels();
+            P.xAxisSel.selectAll("text").classed("modified",true);
+            P.xlabel.classed("modified",true);
+        },
+        () => { updateFun(P,fun2); symbolicXTicks(P,null); normalisedLabels(); },
+        () => { updateFun(P,fun3); symbolicXTicks(P,null); normalisedLabels(); },
+        () => { updateFun(P,fun3);
+                d = {0:0,1:1};
+                d[cstar] = queryDict["peeling"] ? "c▵" : "c*";
+                symbolicXTicks(P,d);
+                normalisedLabels(); },
+    ]);
+} else if (variant == "probability-iteration") {
+    let c = +(queryDict["c"] || 0.5);
+    let k = 3;
+    let l = 1;
+    function factorial(n) {
+        return d3.range(1,n+1).reduce((a,b) => a*b,1);
+    }
+    function f(x) {
+        const lamb = c*k*x;
+        return 1-Math.exp(-lamb)*d3.range(l).map(i => lamb**i / factorial(i)).reduce((a,b) => a+b);
+    }
+    function g(y) {
+        return y**(k-1);
+    }
+    function gInv(x) {
+        return x**(1/(k-1));
+    }
+    
+    var integral;
+    let resolution = 1000
+    function computeF() {
+        const step = 1/resolution;
+        const values = d3.range(resolution)
+                .map(i => (i+0.5)/resolution)
+                .map(x => (gInv(x) - f(x))*step);
+        integral = [0];
+        values.reduce((a,b,i) => (integral[i+1] = a+b),0);
+    }
+    function F(x) {
+        return integral[Math.floor(x * resolution)];
+    }
+        
+    let n = 100;
+    function pIteration() {
+        points = []
+        let x = 1;
+        let y = 1;
+        points.push([x,y]);
+        for(i = 0; i < n; ++i) {
+            y = f(x);
+            points.push([x,y]);
+            x = g(y);
+            points.push([x,y]);
+        }
+        return d3.line()(points.map(pair => [P.X(pair[0]), P.Y(pair[1])]));
+    }
+    
+    withIntegral = !queryDict["noIntegral"]
+
+    width /= withIntegral ? 2 : 1;
+    svg.attr("width", width);
+    const sliderPar = makeSlider();
+
+    if (withIntegral) {
+        svg.attr("width", width);
+        svg2 = svg.clone(true);
+        Q = { svg : svg2, maxY : 0.1 };
+        makeAxis(Q);
+        addAxisLabels(Q,"q","enclosed area");
+    }
+    P = {};
+    makeAxis(P);
+    addAxisLabels(P,"q","p");
+
+    addFun(P,gInv);
+    const iteration = svg.select("#functions").append("path");
+    const area = svg.select("#areas").append("path");
+    
+    function update() {
+        iteration.attr("d",pIteration(n));
+        showFun(P,f);
+        if (withIntegral) {
+            computeF();
+            showFun(Q,F,resolution);
+        }
+        areaData = plot(P,f).concat(plot(P,gInv).reverse());
+        area.attr("d", d3.line()(areaData));
+    }
+    update();
+    
+    // controls
+    var cSlider = sliderPar.append("input")
+             .attr("type","range")
+             .attr("step", "any")
+             .attr("min", 0.001)
+             .attr("max", 2*l)
+             .attr("value", c);
+    var cShower = sliderPar.append("span").text("c = " + c);
+    cSlider.on("input", function() {
+        c = +this.value
+        cShower.text("c = " + c.toFixed(3));
+        update();
+    });
+    
+    var _transitions;
+    if (withIntegral) {
+        _transitions = fromFrames([
+            () => {
+                    svg2.classed("invisible",true);
+                    iteration.classed("invisible",false);
+            },
+            () => { 
+                    svg2.classed("invisible",false);
+                    // iteration.classed("invisible",true);
+            }
+        ]);
+    }
+} else if (variant == "random-walk-experiment") {
+    P = { maxY : 100, useLogScaleY : true, minY : 1 } ;
+    makeAxis(P);
+    symbolicXTicks(P,{0:0,1:1,0.91:"c*"});
+    addAxisLabels(P,"load factor","mean steps for insertion");
+    addDiscreteFun(P, rw_exp_data[1][1]);
+    addDiscreteFun(P, rw_exp_data[2][1]);
+    addDiscreteFun(P, rw_exp_data[3][1]);
+    addDiscreteFun(P,[[0.91,1],[0.91,1000]]);
+    let funs = P.svg.select("#functions").selectAll("path").data(d3.range(5)).classed("highlight",true);
+    
+    function show(i) {
+        funs.classed("invisible",idx => idx > i && idx != 4);
+    }
+    
+    var _transitions = fromFrames([
+        () => show(1),
+        () => show(2),
+        () => show(3),
+    ]);
+}
+processOptions();
+    </script>
+</body>
