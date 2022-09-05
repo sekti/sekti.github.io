@@ -94,7 +94,9 @@ function dummyFragments(n) {
     <ul>
       <li class="fragment"><i>existence</i> of a placement whp ✓ <span class="cite">PR04,Fot+05,Die+10,FM12,FP10</span>
       <li class="fragment"><i>constructing</i> a placement in $\mathcal{O}(m)$ ✓ <span class="cite">Kho13</span></li>
-      <li class="fragment">TODO: efficient <i>insertion</i>, i.e. <i>maintaining</i> a placement as keys arrive</li>
+      <li class="fragment">TODO: efficient <i>insertion</i> (and <i>deletions</i>), i.e. <i>maintaining</i> a placement
+      <!-- as keys arrive -->
+      </li>
       <!-- <li class="fragment gray">TODO: handle deletions</li> -->
     </ul>
   </p>
@@ -102,7 +104,7 @@ function dummyFragments(n) {
 <section>
   <h3>Random Walk Insertion</h3>
   <div class="fig-container" data-style="height:10em"
-       data-file="figures/cuckooTable.html?pic=random-walk-demo"></div>
+       data-file="figures/cuckooTable.html?pic=random-walk-demo&short"></div>
   <pre class="python"><code data-line-numbers data-trim>
 def RW($x$):
   while $x$ != ⊥:
@@ -112,7 +114,7 @@ def RW($x$):
 </section>
 <section>
   <div class="nicebox"><p>Conjecture</p>
-    Let $t_i$ be the number of steps for the $i$-th insertion.<br> If $\frac{i}{n} < c_k^* - ε$ then $𝔼[t_i] = \mathcal{O}(1)$ whp.
+    Let $k ≥ 3$ and <span class="fragment highlight-red" data-fragment-index="7">$\frac{i}{n} < c_k^*-ε$</span>. Then whp the $i$-th insertion using RW takes expected time $\mathcal{O}(1)$</span>.
   </div>
   <!-- <h3>What is known</h3> -->
   <table class="tr1">
@@ -136,7 +138,7 @@ def RW($x$):
   </table>
   <!-- <h3 class="fragment" data-fragment-index="5">a novel imperfect result</h3> -->
   <div class="fragment nicebox newthm" data-fragment-index="5"><p>Theorem (new)</p>
-    For any $k ≥ 3$ and <span class="fragment highlight-red" data-fragment-index="7">$\frac{m}{n} = c_k^{Δ}-ε$</span>, sequentially inserting <span class="fragment highlight-blue" data-fragment-index="6">$m$</span> keys into a table with $n$ buckets using RW takes expected time <span class="fragment highlight-blue" data-fragment-index="6">$\mathcal{O}(m)$</span> whp.
+    Let $k ≥ 3$ and <span class="fragment highlight-red" data-fragment-index="7">$\frac{m}{n} < c_k^{Δ}-ε$</span>. Then whp inserting <span class="fragment highlight-blue" data-fragment-index="6">$m$</span> keys using RW takes expected time <span class="fragment highlight-blue" data-fragment-index="6">$\mathcal{O}(m)$</span>.
   </div>
   <p>
     <span class="fragment blue" data-fragment-index="6"> ↪ <i>amortised</i> $\mathcal{O}(1)$ time (in expectation whp)</span><br>
@@ -145,7 +147,7 @@ def RW($x$):
 </section>
 <section>
   <div class="nicebox" data-fragment-index="14">
-    <p>Thresholds for peeling <span class="cite">Coo04,JL07,Mol05</span> orienting <span class="cite">Die+10,FM12,FP10</span></p>
+    <p>Thresholds for peeling <span class="cite">Coo04,JL07,Mol05</span> and orienting <span class="cite">Die+10,FM12,FP10</span></p>
     <table class="tl1 tc2 tc3 tc4 tc5 tc6 tc7">
       <tr class="midrule">
         <td></td>
@@ -197,7 +199,7 @@ def RW($x$):
   <h1>Analysis</h1>
 </section>
 <section>
-  <h3>Amortised how?</h3>
+  <h3>Why Amortised?</h3>
     <div class="nicebox fragment">
       <p>Old focus: Insertions</p>
       $\qquad \ \ \ \ \ t_i := \#$ movements of <b>all keys</b> during the <b>$i$-th insertion</b>
@@ -241,9 +243,14 @@ def RW($x$):
 
 <section>
   <div style="width:100%">
-    <div class="fig-container" style="width:60%;overflow:visible;float:left" data-style="width:100%;height:12em"
+    <div style="width:55%;float:left">
+      <h3>Peeling Process</h3>
+    </div>
+    <div style="width:40%;float:right">
+      <h3>Random Walk</h3>
+    </div>
+    <div class="fig-container" style="width:60%;overflow:visible;float:left" data-style="width:100%;height:10em"
     data-file="figures/cuckooTable.html?pic=peeling-demo-new"></div>
-    <div style="float:right;height:1em;width:10em"></div>
     <div class="fig-container" style="width:40%;overflow:visible;float:right" data-style="width:100%;height:10em"
     data-file="figures/graphs.html?pic=dependence-graph-anim"></div>
     <!-- <span style="float:right" class="fragment" data-fragment-index="1">number $≈$ moves into designated bucket until safe</span> -->
@@ -260,6 +267,56 @@ def RW($x$):
   </div>
   <script>dummyFragments(10);</script>
 </section>
+<section class="small">
+  <h3>Summary</h3>
+  <div style="width:100%">
+    <div class="fig-container" style="width:60%;overflow:visible;float:left" data-style="width:100%;height:10em"
+    data-file="figures/cuckooTable.html?pic=peeling-demo-new&static=6"></div>
+    <div class="fig-container" style="width:40%;overflow:visible;float:right" data-style="width:100%;height:10em"
+    data-file="figures/graphs.html?pic=dependence-graph-anim&static=6"></div>
+  </div>
+  
+  <div style="clear: both;" class="nicebox">
+    <p>This work
+    <span class="fragment appear highlight-red" data-fragment-index="1">
+      and Open Questions
+    </span>
+    </p>
+    <ul>
+      <li>insertions using RW
+        <span class="fragment appear highlight-red" data-fragment-index="1">
+          and deletions
+        </span></li> <!-- , possibly concurrent -->
+      <li>$\mathcal{O}(1)$ expected
+      <span class="fragment strike highlight-red" data-fragment-index="1">
+        amortised
+      </span>
+      running times whp</li>
+      <!-- <li>any number $k$ of hash functions</li> -->
+      <li>up to the
+      <span class="fragment strike highlight-red" data-fragment-index="1">
+        peeling threshold
+      </span>
+      <span class="fragment appear" data-fragment-index="1">
+        orientability threshold
+      </span>
+      </li>
+    </ul>
+  </div>
+  <!-- <p></p>
+  <div class="nicebox fragment">
+    <p>Future Work?</p>
+    <ul>
+      <li>insertions + deletions</li>
+      <li>$\mathcal{O}(1)$ expected running times</li> -->
+      <!-- <li>buckets of size $≥ 2$</li> -->
+      <!-- <li>hashing schemes with higher peeling thresholds</li> -->
+      <!-- <li><b>up to the orientability threshold!</b></li>
+    </ul>
+  </div> -->
+  <h4 class="fragment appear">Thanks!</h4>
+</section>
+
 <section>
   <h3>Technical Lemmas</h3>
   <div class="nicebox">
@@ -291,32 +348,7 @@ def RW($x$):
     $⇒$ only $m·(k-1)^{1/δ} = \mathcal{O}(m)$ paths outside the “leftover” part
   </center>
 </section>
-<section class="small">
-  <h3>Summary</h3>
-  <div class="fig-container" data-style="height:6em;width:70%"
-       data-file="figures/cuckooTable.html?pic=random-walk-demo&static=8"></div>
-  <div class="nicebox">
-    <p>This work:</p>
-    <ul>
-      <li>insertions, possibly concurrent</li>
-      <li>$\mathcal{O}(1)$ expected amortised running times</li>
-      <!-- <li>any number $k$ of hash functions</li> -->
-      <li>up to the peeling threshold</li>
-    </ul>
-  </div>
-  <p></p>
-  <div class="nicebox fragment">
-    <p>Future Work?</p>
-    <ul>
-      <li>insertions + deletions</li>
-      <li>$\mathcal{O}(1)$ expected running times</li>
-      <!-- <li>buckets of size $≥ 2$</li> -->
-      <!-- <li>hashing schemes with higher peeling thresholds</li> -->
-      <li><b>up to the orientability threshold!</b></li>
-    </ul>
-  </div>
-  <h4 class="fragment appear">Thanks!</h4>
-</section>
+
             </div>
         </div>
         <script>

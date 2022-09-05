@@ -1289,7 +1289,7 @@ else if (variant == "random-walk-demo") {
         G.keySel     .classed("invisible", (_,id) => !visible(id,i));
         G.connections.classed("invisible", key => !visible(key.index,i));
     }
-    var _transitions = fromFrames(d3.range(9).map(i => (() => makeFrame(i))));
+    var _transitions = fromFrames(d3.range("short" in queryDict ? 5 : 9).map(i => (() => makeFrame(i))));
 } else if (variant == "peeling-demo-new") {
     hashes = [[2,5,8],[0,2,4],[6,8,9],[3,5,9],[4,6,8],[1,4,5]]
     G = {
@@ -1302,7 +1302,6 @@ else if (variant == "random-walk-demo") {
     }
     
     function makeFrame(i) {
-        console.log(i)
         const coolKeyNames = ["♡","♣","△","☆","♘","☺","☼","♪","☏","⚠","♯","♀"];
         const orientation = [-1,-1,-1,-1,-1,-1];
         
